@@ -1,9 +1,9 @@
 ; installer.nsh — custom NSIS hooks for Source Tracker
 
 ; ── Kill running instance at the VERY START of the installer ─────────────────
-; customHeader runs before electron-builder attempts to close the app,
-; preventing the "Source Tracker cannot be closed" dialog entirely.
-!macro customHeader
+; customInit is the earliest electron-builder hook — runs before the app-close
+; attempt, preventing the "Source Tracker cannot be closed" dialog entirely.
+!macro customInit
   ; Kill main process and all Electron helper child processes
   nsExec::ExecToLog 'taskkill /F /IM "Source Tracker.exe" /T'
   nsExec::ExecToLog 'taskkill /F /IM "source-tracker.exe" /T'
