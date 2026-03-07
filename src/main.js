@@ -161,7 +161,7 @@ function createDesktopWindow() {
     width: 1160, height: 780, minWidth: 820, minHeight: 560,
     title: "Source Tracker", backgroundColor: "#000000",
     icon: fs.existsSync(ICON_PATH) ? ICON_PATH : undefined,
-    webPreferences: { preload: path.join(__dirname, "preload.js"), contextIsolation: true, nodeIntegration: false, sandbox: false, webSecurity: false },
+    webPreferences: { preload: path.join(__dirname, "preload.js"), contextIsolation: true, nodeIntegration: false, sandbox: false },
   });
   desktopWin.loadFile(path.join(__dirname, "renderer", "desktop.html"));
   desktopWin.on("close", e => { e.preventDefault(); desktopWin.hide(); });
@@ -175,11 +175,15 @@ function createOverlayWindow() {
     x: workArea.x + 24, y: workArea.y + 60,
     frame: false, transparent: true, alwaysOnTop: true,
     skipTaskbar: true, resizable: true, hasShadow: false, focusable: false,
-    webPreferences: { preload: path.join(__dirname, "preload.js"), contextIsolation: true, nodeIntegration: false, sandbox: false, webSecurity: false },
+    webPreferences: { preload: path.join(__dirname, "preload.js"), contextIsolation: true, nodeIntegration: false, sandbox: false },
   });
   overlayWin.setAlwaysOnTop(true, "screen-saver");
   // Start in click-through mode — renderer will disable it on hover over interactive elements
   overlayWin.setIgnoreMouseEvents(true, { forward: true });
+  // CSP: only allow scripts/styles from our own files, block all remote code injection
+  overlayWin.webContents.session.webRequest.onHeadersReceived({ urls: ['file://*/*'] }, (details, callback) => {
+    callback({ responseHeaders: { ...details.responseHeaders, 'Content-Security-Policy': ["default-src 'self' 'unsafe-inline'; connect-src https://source-tracker-six.vercel.app https://api.r6data.eu; img-src 'self' data:;"] } });
+  });
   overlayWin.loadFile(path.join(__dirname, "renderer", "overlay.html"));
   overlayWin.hide();
   overlayWin.on("closed", () => { overlayWin = null; });
@@ -347,8 +351,11 @@ function startLogWatch(profileId) {
   // Start from current end of file — ignore old sessions
   try { logFilePos = fs.statSync(logFilePath).size; } catch (_) { logFilePos = 0; }
 
+  let logDebounce = null;
   logWatcher = fs.watch(logFilePath, { persistent: true }, eventType => {
-    if (eventType === "change") readNewLogLines();
+    if (eventType !== "change") return;
+    if (logDebounce) return; // already scheduled
+    logDebounce = setTimeout(() => { logDebounce = null; readNewLogLines(); }, 100);
   });
   logWatcher.on("error", err => {
     console.error("[Log] Watch error:", err.message);
@@ -980,6 +987,9 @@ ipcMain.handle("auth-get", async () => {
   // Check token cache first — if valid, restore session silently (no browser window)
   const cached = loadTokenCache();
   if (cached) {
+    // Don't restore expired tokens — force fresh login
+    const tokenExpired = cached.expiry && Date.now() > cached.expiry;
+    if (!tokenExpired) {
     ubiTicket    = cached.ticket;
     ubiSessionId = cached.sessionId;
     ubiExpiry    = cached.expiry;
@@ -993,6 +1003,7 @@ ipcMain.handle("auth-get", async () => {
       });
       return { loggedIn: true, user: currentUser };
     }
+    } // end !tokenExpired
   }
 
   // No valid cached token — try silent cookie exchange before asking user to log in
