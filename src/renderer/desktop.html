@@ -2,16 +2,13 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<!-- LootLabs — must be first script in <head> -->
-<script data-cfasync="false" src="https://dcbbwymp1bhlf.cloudfront.net/?wbbcd=1247001"></script>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Source Tracker</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Sora:wght@400;600;700;800&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--p:#5D3FD3;--p2:#a78bfa;--g:#22c55e;--r:#ef4444;--y:#fbbf24;--bg:#000009;--s:#09090f}
 
-html,body{height:100%;background:var(--bg);color:rgba(255,255,255,.9);font-family:'Inter',sans-serif;font-size:14px;overflow:hidden}
+html,body{height:100%;background:var(--bg);color:rgba(255,255,255,.9);font-family:'Inter',sans-serif;font-size:14px;overflow:hidden;text-rendering:optimizeSpeed}
 
 /* ─── scanline bg ─── */
 body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
@@ -150,7 +147,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 /* ════════════════════════════════════════════════════════
    MAIN APP SHELL
    ════════════════════════════════════════════════════════ */
-#app{height:100%;display:flex;flex-direction:column;position:relative;z-index:1}
+#app{height:100%;display:flex;flex-direction:column;position:relative;z-index:1;transition:padding-top .25s ease}
 #app.hidden{display:none}
 
 /* ─── Header ─── */
@@ -160,7 +157,7 @@ header{
 }
 .hrow{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:10px}
 .app-title{font-family:'Sora',sans-serif;font-size:19px;font-weight:800;color:#fff;
-  animation:glow 4s infinite;flex-shrink:0}
+  flex-shrink:0}
 .h-sub{font-size:12px;color:rgba(93,63,211,.55);border-left:1px solid rgba(93,63,211,.2);
   padding-left:12px;flex-shrink:0}
 
@@ -175,7 +172,7 @@ header{
 .logout-btn{
   background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.28);
   color:#ef4444;border-radius:14px;padding:4px 11px;font-size:11px;font-weight:600;
-  cursor:pointer;transition:all .15s;white-space:nowrap;
+  cursor:pointer;transition:opacity .15s,background .15s;white-space:nowrap;
 }
 .logout-btn:hover{background:rgba(239,68,68,.22);border-color:rgba(239,68,68,.5)}
 
@@ -183,17 +180,17 @@ header{
   display:flex;align-items:center;gap:5px;
   background:rgba(88,101,242,.12);border:1px solid rgba(88,101,242,.35);
   color:#8b9cf4;border-radius:14px;padding:5px 11px;font-size:11px;font-weight:600;
-  cursor:pointer;text-decoration:none;transition:all .15s;white-space:nowrap;
+  cursor:pointer;text-decoration:none;transition:opacity .15s,background .15s;white-space:nowrap;
 }
 .help-btn:hover{background:rgba(88,101,242,.25);border-color:rgba(88,101,242,.6);color:#a5b4fc}
 
 /* match status dot */
 .gs{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;flex-shrink:0}
 .gdot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.18);flex-shrink:0}
-.gdot.on{background:var(--g);animation:pulse 1.6s infinite}
+.gdot.on{background:var(--g)}
 
 /* ─── Layout ─── */
-.layout{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
+.layout{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;contain:layout style;contain:layout style}
 
 /* ─── Tab bar ─── */
 .tab-bar{
@@ -205,7 +202,7 @@ header{
   padding:9px 18px 8px;font-family:'Sora',sans-serif;font-size:12px;font-weight:700;
   letter-spacing:.6px;text-transform:uppercase;
   background:none;border:none;border-bottom:2px solid transparent;
-  color:rgba(255,255,255,.3);cursor:pointer;transition:all .18s;margin-bottom:-1px;
+  color:rgba(255,255,255,.3);cursor:pointer;transition:color .18s,background .18s;margin-bottom:-1px;
   white-space:nowrap;
 }
 .tab-btn:hover{color:rgba(255,255,255,.6)}
@@ -218,7 +215,7 @@ header{
 /* ═══════════════════════════
    HOME TAB
    ═══════════════════════════ */
-#tab-home{flex-direction:column;overflow-y:auto;padding:20px 24px 24px;gap:20px}
+#tab-home{flex-direction:column;overflow-y:auto;padding:20px 24px 24px;gap:20px;scrollbar-gutter:stable}
 #tab-home::-webkit-scrollbar{width:3px}
 #tab-home::-webkit-scrollbar-thumb{background:rgba(93,63,211,.3);border-radius:3px}
 
@@ -292,7 +289,7 @@ header{
 }
 .home-loading-spinner{
   width:32px;height:32px;border:2px solid rgba(93,63,211,.2);border-top-color:#5D3FD3;
-  border-radius:50%;animation:spin .8s linear infinite;
+  border-radius:50%;animation:spin .8s linear infinite;will-change:transform;
 }
 @keyframes spin{to{transform:rotate(360deg)}}
 
@@ -315,14 +312,7 @@ header{
 .match-sidebar::-webkit-scrollbar{width:3px}
 .match-sidebar::-webkit-scrollbar-thumb{background:rgba(93,63,211,.3);border-radius:3px}
 
-/* ad block in sidebar */
-.ad-sidebar{
-  margin:12px;border-radius:8px;overflow:hidden;
-  background:rgba(93,63,211,.04);border:1px dashed rgba(93,63,211,.15);
-  min-height:250px;display:flex;align-items:center;justify-content:center;
-  flex-shrink:0;
-}
-.ad-sidebar-placeholder{font-size:11px;color:rgba(255,255,255,.1);letter-spacing:1px;text-transform:uppercase}
+
 
 /* Match main */
 .match-main{
@@ -332,13 +322,7 @@ header{
 .match-main::-webkit-scrollbar{width:3px}
 .match-main::-webkit-scrollbar-thumb{background:rgba(93,63,211,.3);border-radius:3px}
 
-/* leaderboard ad strip above roster */
-.ad-leaderboard{
-  border-radius:8px;overflow:hidden;width:100%;
-  background:rgba(93,63,211,.04);border:1px dashed rgba(93,63,211,.15);
-  height:90px;display:flex;align-items:center;justify-content:center;flex-shrink:0;
-}
-.ad-leaderboard-placeholder{font-size:11px;color:rgba(255,255,255,.1);letter-spacing:1px;text-transform:uppercase}
+
 
 /* ─── Panel ─── */
 .panel{
@@ -380,7 +364,7 @@ header{
 
 /* ─── Player cards ─── */
 .card{background:#0d0d1a;border:1px solid rgba(93,63,211,.16);border-radius:7px;padding:10px;
-  min-height:85px;transition:border-color .18s}
+  min-height:85px;transition:border-color .18s;contain:layout style}
 .card:hover{border-color:rgba(93,63,211,.4)}
 .card.enemy{border-color:rgba(248,113,113,.09)}
 .card.enemy:hover{border-color:rgba(248,113,113,.35)}
@@ -428,7 +412,7 @@ header{
 .full-card{
   background:var(--s);border:1px solid rgba(93,63,211,.35);border-radius:12px;
   overflow:hidden;position:relative;
-}
+;contain:layout style}
 .full-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;
   background:linear-gradient(90deg,transparent,#5D3FD3,#a78bfa,#5D3FD3,transparent)}
 .full-card-head{padding:18px 20px;display:flex;align-items:center;gap:16px;
@@ -440,7 +424,7 @@ header{
 
 /* ─── Shimmer ─── */
 .sh{background:linear-gradient(90deg,rgba(93,63,211,.06) 25%,rgba(93,63,211,.13) 50%,rgba(93,63,211,.06) 75%);
-  background-size:200% 100%;animation:shim 1.4s infinite;border-radius:4px}
+  border-radius:4px;opacity:.15}
 
 /* ─── Footer ─── */
 .footer{text-align:center;font-size:11px;color:rgba(255,255,255,.15);padding:6px 0 8px;flex-shrink:0}
@@ -453,14 +437,26 @@ kbd{background:rgba(93,63,211,.12);border:1px solid rgba(93,63,211,.3);border-ra
 .clr-btn:hover{background:rgba(93,63,211,.2)}
 
 /* ─── Animations ─── */
-@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.2;transform:scale(.45)}}
-@keyframes shim{0%{background-position:200% 0}100%{background-position:-200% 0}}
-@keyframes glow{0%,100%{text-shadow:0 0 12px rgba(93,63,211,.5)}50%{text-shadow:0 0 24px rgba(93,63,211,.9),0 0 48px rgba(93,63,211,.4)}}
+
 @keyframes fi{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-.fi{animation:fi .3s ease both}
+.fi{animation:fi .3s ease both;will-change:opacity,transform}
+
+/* ── Fixed top ad banner ── */
+#ad-top-banner{
+  position:fixed;top:0;left:0;right:0;z-index:99990;
+  height:0;overflow:hidden;
+  background:rgba(0,0,0,.97);
+  border-bottom:1px solid rgba(93,63,211,.15);
+  display:flex;align-items:center;justify-content:center;
+  transition:height .25s ease;pointer-events:none;
+}
+#ad-top-banner.visible{height:68px;pointer-events:auto;}
 </style>
 </head>
 <body>
+<div id="ad-top-banner">
+  <div id="ad-top-inner" style="width:468px;height:60px;overflow:hidden"></div>
+</div>
 
 <!-- ══════════════════════════════════════════════════════
      LOGIN SCREEN
@@ -684,19 +680,12 @@ kbd{background:rgba(93,63,211,.12);border:1px solid rgba(93,63,211,.3);border-ra
           </div>
         </div>
 
-        <!-- LootLabs sidebar ad (300×250) -->
         <div style="flex:1"></div>
-        <div class="ad-sidebar" id="ad-sidebar">
-          <div id="ad-banner" style="width:300px;min-height:250px;display:flex;align-items:center;justify-content:center"></div>
-        </div>
       </div>
 
       <!-- Match main content -->
       <div class="match-main">
-        <!-- LootLabs leaderboard ad (728×90) -->
-        <div class="ad-leaderboard" id="ad-leaderboard">
-          <div id="ad-leaderboard-inner" style="width:100%;min-height:90px;display:flex;align-items:center;justify-content:center"></div>
-        </div>
+
 
         <!-- Roster panel -->
         <div class="panel fi" id="roster-panel">
@@ -739,7 +728,48 @@ kbd{background:rgba(93,63,211,.12);border:1px solid rgba(93,63,211,.3);border-ra
 </div>
 
 <script>
+// ── Player Cache ─────────────────────────────────────────────────────────────
+const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+const _playerCache = {};
+
+function _cacheKey(username, platform) {
+  return (username || '').trim().toLowerCase() + ':' + (platform || 'uplay');
+}
+function getCachedPlayer(username, platform) {
+  const entry = _playerCache[_cacheKey(username, platform)];
+  if (!entry) return null;
+  if (Date.now() - entry.ts > CACHE_TTL) {
+    delete _playerCache[_cacheKey(username, platform)];
+    return null;
+  }
+  return entry.data;
+}
+function setCachedPlayer(username, platform, data) {
+  _playerCache[_cacheKey(username, platform)] = { ts: Date.now(), data };
+  const keys = Object.keys(_playerCache);
+  if (keys.length > 50) {
+    keys.sort((a, b) => _playerCache[a].ts - _playerCache[b].ts);
+    keys.slice(0, keys.length - 50).forEach(k => delete _playerCache[k]);
+  }
+}
+async function lookupPlayerCached(username, platform, opts = {}) {
+  const { slotIndex, forceRefresh = false } = opts;
+  if (!forceRefresh) {
+    const cached = getCachedPlayer(username, platform);
+    if (cached) return { ...cached, _fromCache: true };
+  }
+  const result = await window.tracker.lookupPlayer({ username, platform, slotIndex });
+  if (result && !result.error) setCachedPlayer(username, platform, result);
+  return result;
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
+const titleCase = str => {
+  if (!str) return str;
+  return str.toLowerCase()
+    .replace(/\b\w/g, c => c.toUpperCase())
+    .replace(/\s(I{1,3}|Iv|Vi{0,3}|V)$/i, m => m.toUpperCase());
+};
 const rc = r => {
   if (!r) return '#a78bfa';
   const s = r.toLowerCase();
@@ -750,6 +780,7 @@ const rc = r => {
   if (s.includes('gold'))     return '#fbbf24';
   if (s.includes('silver'))   return '#94a3b8';
   if (s.includes('bronze'))   return '#cd7f32';
+  if (s.includes('copper'))   return '#b87333';
   return '#a78bfa';
 };
 const sc = (v, t = 1.0) => {
@@ -846,6 +877,7 @@ document.querySelectorAll('.tfa-digit').forEach((inp, i, all) => {
 
 // ── Show app after login ──────────────────────────────────────────────────────
 function showApp(user) {
+  setTimeout(loadAds, 800); // load ads after UI settles
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
   showCredsPanel();
@@ -907,11 +939,18 @@ async function loadHomeStats(username, platform) {
   homePlatform = platform || 'uplay';
   renderHomeLoading();
   try {
-    const profile = await window.tracker.lookupPlayer({ username, platform: homePlatform });
+    const profile = await lookupPlayerCached(username, homePlatform);
     if (profile?.error || !profile?.username) {
       renderHomeError(profile?.error || 'Player not found');
     } else {
       renderHomeStats(username, homePlatform, profile);
+      if (profile._fromCache) {
+        // Show subtle cached indicator in the platform label
+        const platEl = document.getElementById('home-platform');
+        if (platEl && !platEl.textContent.includes('cached')) {
+          platEl.textContent += ' · ⚡ cached';
+        }
+      }
     }
   } catch (e) {
     renderHomeError(e.message || 'Failed to load stats');
@@ -924,26 +963,33 @@ function retryHomeStats() {
 
 // Shared season history table builder
 function buildSeasonTable(seasons) {
-  if (!seasons || !seasons.length) return '';
+  if (!seasons || !seasons.length) return '<div style="padding:12px 0;text-align:center;font-size:12px;color:rgba(255,255,255,.25)">No ranked season history found.</div>';
   const rows = seasons.slice(0, 8).map(s => {
+    const rankDisplay = titleCase(s.rank || '');
     const kdN  = parseFloat(s.kd);
     const wrN  = parseFloat(s.winRate);
     const kdC  = isNaN(kdN)  ? 'rgba(255,255,255,.45)' : kdN  >= 1.0 ? '#22c55e' : '#ef4444';
     const wrC  = isNaN(wrN)  ? 'rgba(255,255,255,.45)' : wrN  >= 50  ? '#22c55e' : '#ef4444';
     const total = (s.matchesPlayed > 0) ? s.matchesPlayed : ((s.wins||0) + (s.losses||0));
     const isC  = s.isChamp || (s.rank||'').toUpperCase().includes('CHAMPION');
+    const champTag = isC && s.champNumber ? ` <span style="font-size:9px;color:#f0c040;opacity:.7">#${s.champNumber}</span>` : (isC ? ' 🏆' : '');
     return `<tr class="${isC ? 'champ-row' : ''}">
       <td>
-        <span class="st-season">${s.label || '?'}${isC ? ' 🏆' : ''}</span>
-        ${s.operationName ? `<div style="font-size:9px;color:rgba(255,255,255,.3);font-weight:500;margin-top:1px">Op. ${s.operationName}</div>` : ''}
+        <div style="display:flex;flex-direction:column;gap:1px">
+          <span class="st-season">${s.label || '?'}${champTag}</span>
+          ${s.operationName ? `<div style="font-size:9px;color:rgba(255,255,255,.3);font-weight:500">Op. ${s.operationName}</div>` : ''}
+        </div>
       </td>
-      <td><span class="st-rank" style="color:${rc(s.rank)}">${s.rank || 'Unranked'}</span>${s.mmr ? `<span class="st-mmr">${Number(s.mmr).toLocaleString()} RP</span>` : ''}</td>
+      <td>
+        <span class="st-rank" style="color:${rc(s.rank)}">${rankDisplay || 'Unranked'}</span>
+        ${s.mmr ? `<span class="st-mmr">${Number(s.mmr).toLocaleString()} RP</span>` : ''}
+      </td>
       <td class="st-num" style="color:${kdC}">${!isNaN(kdN) ? kdN.toFixed(2) : '—'}</td>
       <td class="st-wr"  style="color:${wrC}">${!isNaN(wrN) ? wrN.toFixed(1)+'%' : '—'}</td>
       <td class="st-wl">${(s.wins != null && s.losses != null && total > 0)
         ? `<span style="color:#22c55e">${s.wins}</span><span style="color:rgba(255,255,255,.25)"> / </span><span style="color:#ef4444">${s.losses}</span>`
         : '—'}</td>
-      <td class="st-mp">${total > 0 ? total : '—'}</td>
+      <td class="st-mp">${total > 0 ? total.toLocaleString() : '—'}</td>
     </tr>`;
   }).join('');
   return `<table class="season-table">
@@ -977,15 +1023,22 @@ function renderHomeStats(username, platform, p) {
 
   // Rank
   const rankEl = document.getElementById('home-rank');
-  rankEl.textContent = p.rank || 'Unranked';
+  rankEl.textContent = titleCase(p.rank || 'Unranked');
   rankEl.style.color = rc(p.rank);
-  document.getElementById('home-mmr').textContent = p.mmr ? `${p.mmr} RP` : '';
+  let mmrText = p.mmr ? `${p.mmr} RP` : '';
+  if (p.champNumber) mmrText += ` · #${p.champNumber}`;
+  document.getElementById('home-mmr').textContent = mmrText;
 
   // Detection + inactive badge
   const detEl = document.getElementById('home-detection');
   let detHtml = '';
   if (p.detection?.verdict && p.detection.verdict !== 'clean' && p.detection.label) {
     detHtml += `<span class="home-detection" style="color:${p.detection.color};background:${p.detection.color}18;border:1px solid ${p.detection.color}44">${emo(p.detection.verdict)} ${p.detection.label}</span>`;
+    if (p.detection.flags?.length) {
+      p.detection.flags.forEach(f => {
+        detHtml += `<span class="home-detection" style="color:rgba(255,255,255,.45);background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);margin-left:4px;font-size:10px">${f}</span>`;
+      });
+    }
   }
   if (p.isInactive) {
     detHtml += `<span class="home-detection" style="color:#9ca3af;background:rgba(107,114,128,.12);border:1px solid rgba(107,114,128,.3);margin-left:4px">⏸ Inactive — no ranked in last 5 seasons</span>`;
@@ -1029,7 +1082,13 @@ function iv(idx) { return inputVals[idx] || ''; }
 async function lookupSlot(idx) {
   const u = (iv(idx) || '').trim();
   if (!u) return;
-  await window.tracker?.lookupPlayer({ username: u, platform: 'uplay', slotIndex: idx });
+  const cached = getCachedPlayer(u, 'uplay');
+  if (cached) {
+    await window.tracker?.setSlot({ slotIndex: idx, data: { ...cached, _fromCache: true } });
+  } else {
+    const result = await window.tracker?.lookupPlayer({ username: u, platform: 'uplay', slotIndex: idx });
+    if (result && !result.error) setCachedPlayer(u, 'uplay', result);
+  }
 }
 
 function buildCard(slot, idx, isEnemy) {
@@ -1113,12 +1172,14 @@ function renderRoster(payload) {
     bn.textContent = `🔴 Match — ${loadedN}/${totalN} players loaded`;
     // Auto-switch to match tab when a live match starts
     if (currentTab === 'home') switchTab('match');
+    pauseAds(); // pause ads during live match for performance
   } else {
     dot.className = 'gdot';
     gs.textContent = 'Waiting...';
     gs.style.color = 'rgba(255,255,255,.45)';
     bn.className = '';
     bn.textContent = 'Waiting for a match. Enter enemy usernames in the roster, or let the web app auto-push them.';
+    resumeAds(); // match cleared — resume ads
   }
 
   const yt = document.getElementById('your-team');
@@ -1146,12 +1207,18 @@ async function doLookup() {
     <div class="home-loading-spinner" style="margin:0 auto 12px"></div>Loading…</div>`;
 
   try {
-    const p = await window.tracker.lookupPlayer({ username, platform });
+    const p = await lookupPlayerCached(username, platform);
     if (!p || p.error) {
       result.innerHTML = `<div style="padding:20px;text-align:center;color:#ef4444">
         ${p?.error || 'Player not found'}</div>`;
     } else {
       result.innerHTML = buildFullCard(p, platform);
+      if (p._fromCache) {
+        const badge = document.createElement('div');
+        badge.style.cssText = 'font-size:10px;color:rgba(167,139,250,.45);text-align:right;padding:4px 16px 8px;letter-spacing:.5px';
+        badge.textContent = '⚡ Cached result';
+        document.getElementById('lookup-result').appendChild(badge);
+      }
     }
   } catch (e) {
     result.innerHTML = `<div style="padding:20px;text-align:center;color:#ef4444">${e.message}</div>`;
@@ -1169,9 +1236,13 @@ function buildFullCard(p, platform) {
       <div class="home-avatar" style="width:52px;height:52px;font-size:20px">${(p._displayName||p.username||'?').charAt(0).toUpperCase()}</div>
       <div style="flex:1;min-width:0">
         <div class="full-card-name">${p._displayName || p.username}</div>
-        <div class="full-card-rank" style="color:${rc(p.rank)}">${p.rank || 'Unranked'}${p.mmr?` <span style="font-size:11px;color:rgba(255,255,255,.3);font-weight:500">${p.mmr} RP</span>`:''}</div>
+        <div class="full-card-rank" style="color:${rc(p.rank)}">${titleCase(p.rank||'Unranked')}${p.mmr?` <span style="font-size:11px;color:rgba(255,255,255,.3);font-weight:500">${p.mmr} RP${p.champNumber?` · #${p.champNumber}`:''}</span>`:''}</div>
+        ${p.peakRank && p.peakRank !== p.rank ? `<div style="font-size:10px;color:rgba(255,255,255,.35);margin-top:2px">↑ Peak: <span style="color:${rc(p.peakRank)}">${titleCase(p.peakRank)}${p.peakMmr?` ${p.peakMmr} RP`:''}</span></div>` : ''}
         ${p.detection?.verdict&&p.detection.verdict!=='clean'&&p.detection.label
-          ? `<span class="home-detection" style="color:${p.detection.color};background:${p.detection.color}18;border:1px solid ${p.detection.color}44;margin-top:4px">${emo(p.detection.verdict)} ${p.detection.label}</span>` : ''}
+          ? `<div style="margin-top:5px;display:flex;flex-wrap:wrap;gap:4px">
+               <span class="home-detection" style="color:${p.detection.color};background:${p.detection.color}18;border:1px solid ${p.detection.color}44">${emo(p.detection.verdict)} ${p.detection.label}</span>
+               ${(p.detection.flags||[]).map(f=>`<span class="home-detection" style="color:rgba(255,255,255,.4);background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);font-size:10px">${f}</span>`).join('')}
+             </div>` : ''}
       </div>
     </div>
     <div class="full-card-body">
@@ -1182,7 +1253,7 @@ function buildFullCard(p, platform) {
         { val: p.headshotRate!=null?p.headshotRate+'%':'—', lbl:'HS%', color:sc(p.headshotRate,40) },
         { val: p.kills  != null ? fmt(p.kills)  : '—', lbl:'Kills',   color:'rgba(255,255,255,.8)' },
         { val: p.deaths != null ? fmt(p.deaths) : '—', lbl:'Deaths',  color:'rgba(255,255,255,.5)' },
-        { val: p.wins   != null ? fmt(p.wins)   : '—', lbl:'Wins',    color:'#22c55e' },
+        { val: p.matchesPlayed != null ? fmt(p.matchesPlayed) : '—', lbl:'Matches', color:'rgba(255,255,255,.7)' },
         { val: p.timePlayed!=null?p.timePlayed  :'—',  lbl:'Played',  color:'rgba(255,255,255,.7)' },
       ].map(s=>`<div class="stat-card"><div class="stat-val" style="color:${s.color}">${s.val}</div><div class="stat-lbl">${s.lbl}</div></div>`).join('')}
     </div>
@@ -1204,6 +1275,44 @@ function openDiscord() {
     window.open('https://discord.gg/vsybH2fcXs', '_blank');
   }
 }
+
+
+// ── Adsterra Ad Management ────────────────────────────────────────────────────
+const AD_KEY = 'ed8419211e60edaa9dcb290d6a4bba0f';
+const AD_INV = 'https://www.highperformanceformat.com/' + AD_KEY + '/invoke.js';
+let adLoaded = false;
+let adMatchLive = false;
+
+function loadTopAd() {
+  if (adLoaded || adMatchLive) return;
+  adLoaded = true;
+  const container = document.getElementById('ad-top-inner');
+  if (!container) return;
+  const cfg = document.createElement('script');
+  cfg.text = "atOptions={'key':'" + AD_KEY + "','format':'iframe','height':60,'width':468,'params':{}};";
+  container.appendChild(cfg);
+  const inv = document.createElement('script');
+  inv.src = AD_INV; inv.async = true;
+  container.appendChild(inv);
+  document.getElementById('ad-top-banner').classList.add('visible');
+  // push app content down
+  const app = document.getElementById('app');
+  if (app) app.style.paddingTop = '68px';
+}
+
+function pauseAds() {
+  adMatchLive = true;
+  document.getElementById('ad-top-banner').classList.remove('visible');
+  const app = document.getElementById('app');
+  if (app) app.style.paddingTop = '0';
+}
+
+function resumeAds() {
+  adMatchLive = false;
+  adLoaded = false;
+  setTimeout(loadTopAd, 600);
+}
+
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
 if (window.tracker) {
@@ -1231,6 +1340,7 @@ if (window.tracker) {
     document.getElementById('gdot').className = 'gdot';
     document.getElementById('gstatus').textContent = 'Waiting...';
     document.getElementById('gstatus').style.color = 'rgba(255,255,255,.45)';
+    resumeAds(); // match ended — resume ads
   });
 } else {
   showApp({ username: 'DevUser', platform: 'uplay' });

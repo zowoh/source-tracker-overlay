@@ -17,7 +17,8 @@ contextBridge.exposeInMainWorld("tracker", {
   setSlot:      (opts) => ipcRenderer.invoke("set-slot",      opts),
 
   // Overlay
-  setClickThrough: (on) => ipcRenderer.send("set-click-through", on),
+  setClickThrough:     (on)    => ipcRenderer.send("set-click-through", on),
+  setHoverInteractive: (isOver) => ipcRenderer.send("set-hover-interactive", isOver),
 
   // External links
   openDiscord: () => ipcRenderer.send("open-discord"),

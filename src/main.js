@@ -174,10 +174,12 @@ function createOverlayWindow() {
     width: 420, height: 720,
     x: workArea.x + 24, y: workArea.y + 60,
     frame: false, transparent: true, alwaysOnTop: true,
-    skipTaskbar: true, resizable: true, hasShadow: false, focusable: true,
+    skipTaskbar: true, resizable: true, hasShadow: false, focusable: false,
     webPreferences: { preload: path.join(__dirname, "preload.js"), contextIsolation: true, nodeIntegration: false, sandbox: false, webSecurity: false },
   });
   overlayWin.setAlwaysOnTop(true, "screen-saver");
+  // Start in click-through mode — renderer will disable it on hover over interactive elements
+  overlayWin.setIgnoreMouseEvents(true, { forward: true });
   overlayWin.loadFile(path.join(__dirname, "renderer", "overlay.html"));
   overlayWin.hide();
   overlayWin.on("closed", () => { overlayWin = null; });
@@ -1062,6 +1064,26 @@ ipcMain.on("open-discord", () => {
   shell.openExternal(DISCORD_URL);
 });
 
+// Smart hover-based click-through:
+// overlay always forwards mouse events to game EXCEPT when cursor is over interactive elements
+ipcMain.on("set-hover-interactive", (_e, isOver) => {
+  if (!overlayWin || overlayWin.isDestroyed()) return;
+  if (isOver) {
+    // Mouse is over a button/input — capture mouse events so clicks register in overlay
+    overlayWin.setIgnoreMouseEvents(false);
+  } else {
+    // Mouse left interactive area — forward events back to game
+    overlayWin.setIgnoreMouseEvents(true, { forward: true });
+  }
+});
+
+// Legacy manual toggle still works (the 🖱 lock button)
 ipcMain.on("set-click-through", (_e, enabled) => {
-  if (overlayWin && !overlayWin.isDestroyed()) overlayWin.setIgnoreMouseEvents(enabled, { forward: true });
+  if (!overlayWin || overlayWin.isDestroyed()) return;
+  if (enabled) {
+    overlayWin.setIgnoreMouseEvents(true, { forward: true });
+  } else {
+    // Manual lock-off: fully interactive until toggled back
+    overlayWin.setIgnoreMouseEvents(false);
+  }
 });

@@ -659,7 +659,15 @@ function setIV(idx, v) { inputVals[idx] = v; }
 async function lookupSlot(idx) {
   const u = getIV(idx).trim();
   if (!u) return;
-  await window.tracker?.lookupPlayer({ username: u, platform: 'uplay', slotIndex: idx });
+  // Use cache for slot lookups too — avoids rate limits for repeated searches
+  const cached = getCachedPlayer(u, 'uplay');
+  if (cached) {
+    // Inject cached result directly via the slot API
+    await window.tracker?.setSlot({ slotIndex: idx, data: { ...cached, _fromCache: true } });
+  } else {
+    const result = await window.tracker?.lookupPlayer({ username: u, platform: 'uplay', slotIndex: idx });
+    if (result && !result.error) setCachedPlayer(u, 'uplay', result);
+  }
 }
 
 function buildRow(slot, idx, isEnemy) {
@@ -781,6 +789,48 @@ function renderRoster(payload) {
 function doClear() { window.tracker?.clearRoster(); }
 
 // ════════════════════════════════════════════════════
+// PLAYER CACHE
+// ════════════════════════════════════════════════════
+const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+const _playerCache = {};
+
+function _cacheKey(username, platform) {
+  return (username || '').trim().toLowerCase() + ':' + (platform || 'uplay');
+}
+function getCachedPlayer(username, platform) {
+  const entry = _playerCache[_cacheKey(username, platform)];
+  if (!entry) return null;
+  if (Date.now() - entry.ts > CACHE_TTL) {
+    delete _playerCache[_cacheKey(username, platform)];
+    return null;
+  }
+  return entry.data;
+}
+function setCachedPlayer(username, platform, data) {
+  _playerCache[_cacheKey(username, platform)] = { ts: Date.now(), data };
+  // Keep max 50 entries — evict oldest
+  const keys = Object.keys(_playerCache);
+  if (keys.length > 50) {
+    keys.sort((a, b) => _playerCache[a].ts - _playerCache[b].ts);
+    keys.slice(0, keys.length - 50).forEach(k => delete _playerCache[k]);
+  }
+}
+
+// Wraps window.tracker.lookupPlayer with cache
+async function lookupPlayerCached(username, platform, opts = {}) {
+  const { slotIndex, forceRefresh = false } = opts;
+  if (!forceRefresh) {
+    const cached = getCachedPlayer(username, platform);
+    if (cached) return { ...cached, _fromCache: true };
+  }
+  const result = await window.tracker.lookupPlayer({ username, platform, slotIndex });
+  if (result && !result.error) {
+    setCachedPlayer(username, platform, result);
+  }
+  return result;
+}
+
+// ════════════════════════════════════════════════════
 // LOOKUP TAB
 // ════════════════════════════════════════════════════
 let lookupBusy = false;
@@ -810,13 +860,20 @@ async function doLookup() {
       </div>
     </div>`;
 
-  const profile = await window.tracker.lookupPlayer({ username, platform });
+  const profile = await lookupPlayerCached(username, platform);
   lookupBusy = false;
   btn.disabled = false;
 
   if (!profile || profile.error) {
     res.innerHTML = `<div class="result-err">❌ ${profile?.error || 'Player not found'}</div>`;
     return;
+  }
+  if (profile._fromCache) {
+    // Show a subtle cached badge in the result
+    const badge = document.createElement('div');
+    badge.style.cssText = 'font-size:10px;color:rgba(167,139,250,.5);text-align:right;padding:2px 4px 0;letter-spacing:.5px';
+    badge.textContent = '⚡ Cached result';
+    res.appendChild(badge);
   }
 
   const p = profile;
@@ -874,16 +931,95 @@ async function doLookup() {
 }
 
 // ════════════════════════════════════════════════════
-// CLICK-THROUGH
+// CLICK-THROUGH + INPUT ISOLATION
 // ════════════════════════════════════════════════════
+
+// Hover-aware input isolation:
+// The overlay window is always in click-through mode (forwarding mouse to game).
+// When the user's cursor enters any interactive element (button, input, select),
+// we disable click-through so clicks register in the overlay.
+// When cursor leaves, we re-enable click-through so the game gets input again.
+// This means typing in a search box or clicking a button NEVER leaks into R6.
+
+let hoverCount = 0;
+let manualLock = false; // true = fully locked interactive (manual toggle)
+
+function setInteractive(isOver) {
+  if (manualLock) return; // manual lock overrides hover
+  if (isOver) {
+    hoverCount++;
+    if (hoverCount === 1) window.tracker?.setHoverInteractive(true);
+  } else {
+    hoverCount = Math.max(0, hoverCount - 1);
+    if (hoverCount === 0) window.tracker?.setHoverInteractive(false);
+  }
+}
+
+// Attach hover tracking to all interactive elements in the overlay
+function attachHoverTracking() {
+  const selector = 'button, input, select, textarea, [role="button"], .icon-btn, .login-btn, .tab-btn, .lookup-search-btn, .slot-inp, .lookup-inp, .fi-inp, .tfa-d, .card-go, .save-row';
+  document.querySelectorAll(selector).forEach(el => {
+    el.addEventListener('mouseenter', () => setInteractive(true),  { passive: true });
+    el.addEventListener('mouseleave', () => setInteractive(false), { passive: true });
+  });
+  // Also track the panel itself for drag region — NOT interactive per-se,
+  // but we need mouse events for dragging the overlay window
+  const panel = document.getElementById('panel');
+  if (panel) {
+    panel.addEventListener('mouseenter', () => setInteractive(true),  { passive: true });
+    panel.addEventListener('mouseleave', () => { hoverCount = 0; if (!manualLock) window.tracker?.setHoverInteractive(false); }, { passive: true });
+  }
+}
+
+// Re-attach after any roster re-render (new input elements may be created)
+const _origRenderRoster = window._renderRosterHook;
+function reattachAfterRender() {
+  setTimeout(attachHoverTracking, 50);
+}
+
+// Prevent keystrokes from bleeding to game:
+// When an input is focused, stop all keyboard events at the document level
+// from propagating beyond this window (Electron handles this via focusable:false,
+// but we also suppress here as a safety net)
+document.addEventListener('keydown', e => {
+  if (document.activeElement && (
+    document.activeElement.tagName === 'INPUT' ||
+    document.activeElement.tagName === 'TEXTAREA' ||
+    document.activeElement.tagName === 'SELECT'
+  )) {
+    e.stopPropagation();
+  }
+}, true);
+
+// Ensure inputs capture focus within the overlay when clicked
+document.addEventListener('click', e => {
+  if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) {
+    e.target.focus();
+    e.stopPropagation();
+  }
+}, true);
+
+// Manual lock toggle (🖱 button) — makes overlay fully interactive without hover required
 let clickThrough = false;
 function toggleClickThrough() {
   clickThrough = !clickThrough;
+  manualLock = !clickThrough;
   const btn = document.getElementById('lock-btn');
   btn.classList.toggle('active', clickThrough);
-  btn.title = clickThrough ? 'Click-through ON' : 'Click-through OFF';
-  window.tracker?.setClickThrough(clickThrough);
+  btn.title = clickThrough ? 'Click-through ON (hover to interact)' : 'Click-through OFF (fully interactive)';
+  if (clickThrough) {
+    // Back to hover-only mode
+    hoverCount = 0;
+    window.tracker?.setHoverInteractive(false);
+  } else {
+    // Fully interactive — disable click-through entirely
+    window.tracker?.setClickThrough(false);
+  }
 }
+
+// Run hover tracking setup once DOM is ready
+document.addEventListener('DOMContentLoaded', attachHoverTracking);
+if (document.readyState !== 'loading') attachHoverTracking();
 
 // ════════════════════════════════════════════════════
 // PUSH EVENT HANDLERS (main → overlay)
