@@ -933,7 +933,10 @@ function buildSeasonTable(seasons) {
     const total = (s.matchesPlayed > 0) ? s.matchesPlayed : ((s.wins||0) + (s.losses||0));
     const isC  = s.isChamp || (s.rank||'').toUpperCase().includes('CHAMPION');
     return `<tr class="${isC ? 'champ-row' : ''}">
-      <td><span class="st-season">${s.label || '?'}${isC ? ' 🏆' : ''}</span></td>
+      <td>
+        <span class="st-season">${s.label || '?'}${isC ? ' 🏆' : ''}</span>
+        ${s.operationName ? `<div style="font-size:9px;color:rgba(255,255,255,.3);font-weight:500;margin-top:1px">Op. ${s.operationName}</div>` : ''}
+      </td>
       <td><span class="st-rank" style="color:${rc(s.rank)}">${s.rank || 'Unranked'}</span>${s.mmr ? `<span class="st-mmr">${Number(s.mmr).toLocaleString()} RP</span>` : ''}</td>
       <td class="st-num" style="color:${kdC}">${!isNaN(kdN) ? kdN.toFixed(2) : '—'}</td>
       <td class="st-wr"  style="color:${wrC}">${!isNaN(wrN) ? wrN.toFixed(1)+'%' : '—'}</td>
