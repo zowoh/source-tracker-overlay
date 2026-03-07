@@ -595,29 +595,39 @@ function openUbiAuthWindow() {
     ubiAuthWin.webContents.debugger.sendCommand("Network.enable").catch(() => {});
 
     ubiAuthWin.webContents.debugger.on("message", (_e, method, params) => {
-      if (method !== "Network.responseReceived") return;
-      if (!params.response?.url?.includes("/v3/profiles/sessions")) return;
-      // Give the body time to finish loading then grab it
-      setTimeout(async () => {
-        try {
-          const result = await ubiAuthWin?.webContents.debugger.sendCommand(
-            "Network.getResponseBody",
-            { requestId: params.requestId }
-          );
-          if (!result?.body) return;
-          const json = JSON.parse(result.body);
-          if (json?.ticket) {
-            finishUbiAuth({
-              ticket:         json.ticket,
-              sessionId:      json.sessionId      || "",
-              expiry:         json.expiration ? new Date(json.expiration).getTime() : Date.now() + 6900000,
-              profileId:      json.profileId      || json.userId || null,
-              userId:         json.userId         || null,
-              nameOnPlatform: json.nameOnPlatform || json.username || null,
-            });
-          }
-        } catch (_) {}
-      }, 200);
+      // Capture ALL network responses — ticket can come from multiple endpoints
+      // e.g. /v3/profiles/sessions, /v3/profiles/sessions/two-factor, etc.
+      if (method === "Network.responseReceived") {
+        const url = params.response?.url || "";
+        const isUbiApi = url.includes("ubisoft.com") || url.includes("ubi.com");
+        if (!isUbiApi) return;
+        setTimeout(async () => {
+          try {
+            const result = await ubiAuthWin?.webContents.debugger.sendCommand(
+              "Network.getResponseBody",
+              { requestId: params.requestId }
+            );
+            if (!result?.body) return;
+            const json = JSON.parse(result.body);
+            if (json?.ticket) {
+              console.log("[Auth] Got ticket from:", url);
+              finishUbiAuth({
+                ticket:         json.ticket,
+                sessionId:      json.sessionId      || "",
+                expiry:         json.expiration ? new Date(json.expiration).getTime() : Date.now() + 6900000,
+                profileId:      json.profileId      || json.userId || null,
+                userId:         json.userId         || null,
+                nameOnPlatform: json.nameOnPlatform || json.username || null,
+              });
+            }
+          } catch (_) {}
+        }, 300);
+      }
+
+      // Also watch for loadingFinished so we can grab body right after it completes
+      if (method === "Network.loadingFinished") {
+        // Already handled above via responseReceived
+      }
     });
 
     // ── Cookie fallback — poll for Ubisoft session cookies ────────────────
@@ -625,10 +635,13 @@ function openUbiAuthWindow() {
       if (!ubiAuthWin || ubiAuthWin.isDestroyed()) return;
       try {
         const cookies = await ubiSession.cookies.get({ domain: ".ubisoft.com" });
+        // Cast a wide net — any ubi* cookie indicates an active session
         const tokenCookie = cookies.find(c =>
           c.name === "ubiservices_token" ||
           c.name === "ubi_sdsession"     ||
-          c.name === "ubi_token"
+          c.name === "ubi_token"         ||
+          c.name === "ubi_tt"            ||
+          c.name.startsWith("ubi")
         );
         if (tokenCookie) {
           await exchangeCookieForTicket(ubiSession);
@@ -636,10 +649,11 @@ function openUbiAuthWindow() {
       } catch (_) {}
     };
 
+    // Poll every 500ms — catches 2FA completion quickly
     const cookiePoll = setInterval(() => {
       if (!ubiAuthWin || ubiAuthWin.isDestroyed()) { clearInterval(cookiePoll); return; }
       checkCookies();
-    }, 2000);
+    }, 500);
 
     // ── URL change hook ───────────────────────────────────────────────────
     // Broad match: any navigation on ubisoft.com triggers a cookie check.
