@@ -635,13 +635,12 @@ function openUbiAuthWindow() {
       if (!ubiAuthWin || ubiAuthWin.isDestroyed()) return;
       try {
         const cookies = await ubiSession.cookies.get({ domain: ".ubisoft.com" });
-        // Cast a wide net — any ubi* cookie indicates an active session
+        // Only fire on cookies that specifically mean the session is authenticated
+        // NOT generic ubi* cookies which exist on the login page before auth
         const tokenCookie = cookies.find(c =>
           c.name === "ubiservices_token" ||
           c.name === "ubi_sdsession"     ||
-          c.name === "ubi_token"         ||
-          c.name === "ubi_tt"            ||
-          c.name.startsWith("ubi")
+          c.name === "ubi_token"
         );
         if (tokenCookie) {
           await exchangeCookieForTicket(ubiSession);
@@ -661,9 +660,20 @@ function openUbiAuthWindow() {
     // to a dashboard/home page without going through /login-success.
     ubiAuthWin.webContents.on("did-navigate", async (_, url) => {
       if (!url.includes("ubisoft.com")) return;
-      // If navigated away from login page, user has authenticated — exchange immediately
-      const isLoginPage = url.includes("/login") || url.includes("/login-classic");
-      if (!isLoginPage) {
+      // Pages that are part of the login/auth flow — NOT yet authenticated
+      const isAuthFlow = (
+        url.includes("/login") ||
+        url.includes("/login-classic") ||
+        url.includes("/two-factor") ||
+        url.includes("/2fa") ||
+        url.includes("/mfa") ||
+        url.includes("/verify") ||
+        url.includes("/challenge") ||
+        url.includes("/security") ||
+        url.includes("account.ubisoft.com")  // still on account pages = not done yet
+      );
+      if (!isAuthFlow) {
+        // Navigated to a non-auth page (e.g. connect.ubisoft.com) = auth complete
         await exchangeCookieForTicket(ubiSession);
       } else {
         checkCookies();
@@ -672,16 +682,21 @@ function openUbiAuthWindow() {
     ubiAuthWin.webContents.on("did-navigate-in-page", (_, url) => {
       if (url.includes("ubisoft.com")) checkCookies();
     });
-    // Also check on page load — catches cases where session cookies are set
-    // before any navigation event fires (e.g. existing Ubisoft SSO session)
     ubiAuthWin.webContents.on("did-finish-load", async () => {
       const url = ubiAuthWin?.webContents.getURL() || "";
       if (!url.includes("ubisoft.com")) return;
-      // If already logged in, Ubisoft redirects away from /login immediately
-      // Detect this by checking if we landed somewhere other than the login page
-      const isLoginPage = url.includes("/login") || url.includes("/login-classic");
-      if (!isLoginPage) {
-        // Already authenticated — try cookie exchange right away
+      const isAuthFlow = (
+        url.includes("/login") ||
+        url.includes("/login-classic") ||
+        url.includes("/two-factor") ||
+        url.includes("/2fa") ||
+        url.includes("/mfa") ||
+        url.includes("/verify") ||
+        url.includes("/challenge") ||
+        url.includes("/security") ||
+        url.includes("account.ubisoft.com")
+      );
+      if (!isAuthFlow) {
         await exchangeCookieForTicket(ubiSession);
       } else {
         checkCookies();
@@ -748,6 +763,7 @@ async function exchangeCookieForTicket(ubiSess) {
         nameOnPlatform: data.nameOnPlatform || data.username || null,
       });
     }
+    // If no ticket but got a response, session cookies weren't ready yet — keep waiting
   } catch (_) {}
 }
 
