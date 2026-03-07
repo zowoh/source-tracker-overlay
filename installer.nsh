@@ -1,12 +1,19 @@
 ; installer.nsh — custom NSIS hooks for Source Tracker
 
-!macro customInstall
-  ; ── Kill any running instance before installing ──────────────────────────
-  ; Silently terminate the old app so files can be replaced without the
-  ; "Source Tracker cannot be closed" dialog appearing
+; ── Kill running instance at the VERY START of the installer ─────────────────
+; customHeader runs before electron-builder attempts to close the app,
+; preventing the "Source Tracker cannot be closed" dialog entirely.
+!macro customHeader
+  ; Kill main process and all Electron helper child processes
   nsExec::ExecToLog 'taskkill /F /IM "Source Tracker.exe" /T'
-  Sleep 1500
+  nsExec::ExecToLog 'taskkill /F /IM "source-tracker.exe" /T'
+  ; Kill any leftover Electron helper processes from the install dir
+  nsExec::ExecToLog 'wmic process where "ExecutablePath like ''%Source Tracker%''" delete'
+  ; Wait for processes to fully release file handles before installer proceeds
+  Sleep 2500
+!macroend
 
+!macro customInstall
   ; ── Add to Windows startup (HKCU — no admin needed) ──────────────────────
   WriteRegStr HKCU \
     "Software\Microsoft\Windows\CurrentVersion\Run" \
@@ -18,6 +25,10 @@
 !macroend
 
 !macro customUnInstall
+  ; Kill app before uninstalling too
+  nsExec::ExecToLog 'taskkill /F /IM "Source Tracker.exe" /T'
+  Sleep 1500
+
   ; Remove startup entry
   DeleteRegValue HKCU \
     "Software\Microsoft\Windows\CurrentVersion\Run" \
