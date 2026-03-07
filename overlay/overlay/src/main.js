@@ -486,55 +486,6 @@ let ubiAuthWin     = null;
 let ubiAuthResolve = null;
 let ubiAuthReject  = null;
 
-// Try to silently exchange existing persist:ubi-login cookies for a ticket
-// Called on startup — if the user was previously logged into Ubisoft in the app's browser,
-// their session cookies may still be valid and we can skip the login window entirely
-async function trySilentCookieLogin() {
-  try {
-    const partition  = "persist:ubi-login";
-    const ubiSession = session.fromPartition(partition);
-    const cookies    = await ubiSession.cookies.get({ domain: ".ubisoft.com" });
-    if (!cookies || cookies.length === 0) return null;
-
-    // Need at least a session-type cookie to attempt exchange
-    const hasSession = cookies.some(c =>
-      c.name === "ubiservices_token" ||
-      c.name === "ubi_sdsession"     ||
-      c.name === "ubi_token"         ||
-      c.name.startsWith("ubi")
-    );
-    if (!hasSession) return null;
-
-    const cookieStr = cookies.map(c => `${c.name}=${c.value}`).join("; ");
-    const data = await fetchJSONPost(
-      `${UBI_BASE}/v3/profiles/sessions`,
-      {
-        "Content-Type":  "application/json",
-        "Ubi-AppId":     UBI_APPID,
-        "Cookie":        cookieStr,
-        "User-Agent":    CHROME_UA,
-        "Origin":        "https://account.ubisoft.com",
-        "Referer":       "https://account.ubisoft.com/",
-      },
-      JSON.stringify({ rememberMe: false })
-    );
-
-    if (!data?.ticket) return null;
-    console.log("[auth] Silent cookie login succeeded for:", data.nameOnPlatform || data.userId);
-    return {
-      ticket:         data.ticket,
-      sessionId:      data.sessionId      || "",
-      expiry:         data.expiration ? new Date(data.expiration).getTime() : Date.now() + 6900000,
-      profileId:      data.profileId      || data.userId || null,
-      userId:         data.userId         || null,
-      nameOnPlatform: data.nameOnPlatform || data.username || null,
-    };
-  } catch (e) {
-    console.log("[auth] Silent cookie login failed:", e.message);
-    return null;
-  }
-}
-
 function openUbiAuthWindow() {
   return new Promise((resolve, reject) => {
     if (ubiAuthWin && !ubiAuthWin.isDestroyed()) {
@@ -633,20 +584,13 @@ function openUbiAuthWindow() {
     }, 2000);
 
     // ── URL change hook ───────────────────────────────────────────────────
-    // Broad match: any navigation on ubisoft.com triggers a cookie check.
-    // This catches the already-logged-in case where Ubisoft redirects directly
-    // to a dashboard/home page without going through /login-success.
     ubiAuthWin.webContents.on("did-navigate", (_, url) => {
-      if (url.includes("ubisoft.com")) checkCookies();
+      if (/\/login-success|\/callback|account\.ubisoft\.com\/?(\?|#|$)/i.test(url)) {
+        checkCookies();
+      }
     });
     ubiAuthWin.webContents.on("did-navigate-in-page", (_, url) => {
-      if (url.includes("ubisoft.com")) checkCookies();
-    });
-    // Also check on page load — catches cases where session cookies are set
-    // before any navigation event fires (e.g. existing Ubisoft SSO session)
-    ubiAuthWin.webContents.on("did-finish-load", () => {
-      const url = ubiAuthWin?.webContents.getURL() || "";
-      if (url.includes("ubisoft.com")) checkCookies();
+      if (/\/login-success|\/callback/i.test(url)) checkCookies();
     });
 
     ubiAuthWin.on("closed", () => {
@@ -669,20 +613,6 @@ function openUbiAuthWindow() {
 
 async function exchangeCookieForTicket(ubiSess) {
   try {
-    // Show a "signing you in" overlay immediately so user doesn't see Ubisoft dashboard
-    if (ubiAuthWin && !ubiAuthWin.isDestroyed()) {
-      ubiAuthWin.webContents.executeJavaScript(`
-        (function() {
-          if (document.getElementById('__st_overlay')) return;
-          const o = document.createElement('div');
-          o.id = '__st_overlay';
-          o.style.cssText = 'position:fixed;inset:0;background:#000009;z-index:999999;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:sans-serif;color:#fff;gap:16px';
-          o.innerHTML = '<svg width="48" height="48" viewBox="0 0 100 100" fill="none"><path d="M50 6 L88 22 L88 52 Q88 76 50 94 Q12 76 12 52 L12 22 Z" fill="#5D3FD3"/><text x="50" y="62" text-anchor="middle" font-size="28" font-weight="800" fill="white">ST</text></svg><div style="font-size:15px;font-weight:600;color:rgba(255,255,255,.9)">Signing you in…</div><div style="width:32px;height:32px;border:3px solid rgba(93,63,211,.3);border-top-color:#5D3FD3;border-radius:50%;animation:spin 0.8s linear infinite"></div><style>@keyframes spin{to{transform:rotate(360deg)}}</style>';
-          document.body.appendChild(o);
-        })()
-      `).catch(() => {});
-    }
-
     const cookies  = await ubiSess.cookies.get({ domain: ".ubisoft.com" });
     const cookieStr = cookies.map(c => `${c.name}=${c.value}`).join("; ");
 
@@ -826,9 +756,8 @@ function fetchJSONPost(url, headers = {}, body = "") {
   });
 }
 
-async function fetchProfile(username, platform = "uplay", bustCache = false, profileIdHint = null) {
-  let url = `${API_BASE}/player?username=${encodeURIComponent(username)}&platform=${platform}` + (bustCache ? "&bust=1" : "");
-  if (profileIdHint) url += "&profileId=" + encodeURIComponent(profileIdHint);
+async function fetchProfile(username, platform = "uplay", bustCache = false) {
+  const url = `${API_BASE}/player?username=${encodeURIComponent(username)}&platform=${platform}` + (bustCache ? "&bust=1" : "");
   const data = await fetchJSONGet(url);
   if (!data?.username) return null;
   // Auto-bust if profile came back with no KD and no season history
@@ -893,29 +822,18 @@ function onLoginSuccess(user) {
   startLogWatch(user.profileId);
 
   if (!currentUser.profile) {
-    fetchProfile(currentUser.username, currentUser.platform, false, currentUser.profileId)
+    fetchProfile(currentUser.username, currentUser.platform)
       .then(p => {
         if (p && currentUser) {
           currentUser.profile = p;
-          // Persist profile into token cache so next startup is instant
-          saveTokenCache(ubiTicket, ubiSessionId, ubiExpiry, currentUser);
           // Push again so the renderer renders full stats
           sendToDesktop("auth-state", { loggedIn: true, user: currentUser });
         }
       })
       .catch(() => {});
   } else {
-    // Profile already cached — push immediately; also refresh in background
+    // Profile already cached — push immediately
     sendToDesktop("auth-state", { loggedIn: true, user: currentUser });
-    fetchProfile(currentUser.username, currentUser.platform, true, currentUser.profileId)
-      .then(p => {
-        if (p && currentUser) {
-          currentUser.profile = p;
-          saveTokenCache(ubiTicket, ubiSessionId, ubiExpiry, currentUser);
-          sendToDesktop("auth-state", { loggedIn: true, user: currentUser });
-        }
-      })
-      .catch(() => {});
   }
 }
 
@@ -933,7 +851,7 @@ function doLogout() {
 }
 
 // ── IPC handlers ──────────────────────────────────────────────────────────────
-ipcMain.handle("auth-get", async () => {
+ipcMain.handle("auth-get", () => {
   // Check token cache first — if valid, restore session silently (no browser window)
   const cached = loadTokenCache();
   if (cached) {
@@ -951,30 +869,6 @@ ipcMain.handle("auth-get", async () => {
       return { loggedIn: true, user: currentUser };
     }
   }
-
-  // No valid cached token — try silent cookie exchange before asking user to log in
-  try {
-    const silentAuth = await trySilentCookieLogin();
-    if (silentAuth?.ticket) {
-      ubiTicket    = silentAuth.ticket;
-      ubiSessionId = silentAuth.sessionId;
-      ubiExpiry    = silentAuth.expiry;
-      const platform = "uplay";
-      const user = {
-        username:  silentAuth.nameOnPlatform || "Unknown",
-        platform,
-        profileId: silentAuth.profileId || null,
-        profile:   null,
-      };
-      saveTokenCache(ubiTicket, ubiSessionId, ubiExpiry, user);
-      onLoginSuccess(user);
-      setImmediate(() => {
-        sendToOverlay("auth-state", { loggedIn: true, user: currentUser });
-        sendToDesktop("auth-state", { loggedIn: true, user: currentUser });
-      });
-      return { loggedIn: true, user: currentUser };
-    }
-  } catch (_) {}
 
   // No valid cached token — user needs to log in via browser window
   return { loggedIn: false, hasSaved: false };
