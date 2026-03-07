@@ -993,6 +993,11 @@ ipcMain.handle("auth-get", async () => {
 });
 
 async function _doAuthGet() {
+  // On first install TOKEN_FILE won't exist — skip everything and show login immediately
+  if (!fs.existsSync(TOKEN_FILE) && !fs.existsSync(CREDS_FILE)) {
+    return { loggedIn: false, hasSaved: false };
+  }
+
   // Check token cache first — if valid, restore session silently (no browser window)
   const cached = loadTokenCache();
   if (cached) {
