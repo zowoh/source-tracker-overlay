@@ -508,7 +508,7 @@ async function trySilentCookieLogin() {
     if (!hasSession) return null;
 
     const cookieStr = cookies.map(c => `${c.name}=${c.value}`).join("; ");
-    const data = await fetchJSONPost(
+    const data = await fetchJSONPostSoft(
       `${UBI_BASE}/v3/profiles/sessions`,
       {
         "Content-Type":  "application/json",
@@ -688,7 +688,7 @@ async function exchangeCookieForTicket(ubiSess) {
     const cookies  = await ubiSess.cookies.get({ domain: ".ubisoft.com" });
     const cookieStr = cookies.map(c => `${c.name}=${c.value}`).join("; ");
 
-    const data = await fetchJSONPost(
+    const data = await fetchJSONPostSoft(
       `${UBI_BASE}/v3/profiles/sessions`,
       {
         "Content-Type":  "application/json",
@@ -743,7 +743,7 @@ async function ubiLoginUser(loginId, platform, password, tfaCode) {
   };
   if (tfaCode) headers["Ubi-2FACode"] = tfaCode;
 
-  const data = await fetchJSONPost(
+  const data = await fetchJSONPostSoft(
     `${UBI_BASE}/v3/profiles/sessions`,
     headers,
     JSON.stringify({ rememberMe: false })
@@ -842,6 +842,29 @@ function fetchJSONPost(url, headers = {}, body = "") {
     req.on("error", reject);
     req.on("timeout", () => { req.destroy(); reject(new Error("Timeout")); });
     req.write(body); req.end();
+  });
+}
+
+// Soft variant — never throws, returns null on any error or non-JSON response.
+// Used for internal Ubisoft API calls where failure should silently fall through.
+function fetchJSONPostSoft(url, headers = {}, body = "") {
+  return new Promise((resolve) => {
+    try {
+      const u    = new URL(url);
+      const opts = {
+        hostname: u.hostname, port: u.port || 443,
+        path: u.pathname + u.search, method: "POST",
+        headers: { ...headers, "Content-Length": Buffer.byteLength(body) },
+        timeout: 15000,
+      };
+      const req = https.request(opts, res => {
+        let b = ""; res.on("data", d => b += d);
+        res.on("end", () => { try { resolve(JSON.parse(b)); } catch (_) { resolve(null); } });
+      });
+      req.on("error", () => resolve(null));
+      req.on("timeout", () => { req.destroy(); resolve(null); });
+      req.write(body); req.end();
+    } catch (_) { resolve(null); }
   });
 }
 
