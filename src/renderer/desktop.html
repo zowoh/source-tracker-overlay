@@ -820,6 +820,9 @@ async function doLogin() {
 
   if (result.success) {
     showApp(result.user);
+  } else if (result.error && result.error.includes('closed before completing')) {
+    // Window was closed by user without finishing — silent, no error shown
+    // (if finishUbiAuth closed it after success, result.success would be true)
   } else {
     showErr(result.error || 'Sign-in failed. Please try again.');
   }

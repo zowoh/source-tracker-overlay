@@ -645,17 +645,33 @@ function openUbiAuthWindow() {
     // Broad match: any navigation on ubisoft.com triggers a cookie check.
     // This catches the already-logged-in case where Ubisoft redirects directly
     // to a dashboard/home page without going through /login-success.
-    ubiAuthWin.webContents.on("did-navigate", (_, url) => {
-      if (url.includes("ubisoft.com")) checkCookies();
+    ubiAuthWin.webContents.on("did-navigate", async (_, url) => {
+      if (!url.includes("ubisoft.com")) return;
+      // If navigated away from login page, user has authenticated — exchange immediately
+      const isLoginPage = url.includes("/login") || url.includes("/login-classic");
+      if (!isLoginPage) {
+        await exchangeCookieForTicket(ubiSession);
+      } else {
+        checkCookies();
+      }
     });
     ubiAuthWin.webContents.on("did-navigate-in-page", (_, url) => {
       if (url.includes("ubisoft.com")) checkCookies();
     });
     // Also check on page load — catches cases where session cookies are set
     // before any navigation event fires (e.g. existing Ubisoft SSO session)
-    ubiAuthWin.webContents.on("did-finish-load", () => {
+    ubiAuthWin.webContents.on("did-finish-load", async () => {
       const url = ubiAuthWin?.webContents.getURL() || "";
-      if (url.includes("ubisoft.com")) checkCookies();
+      if (!url.includes("ubisoft.com")) return;
+      // If already logged in, Ubisoft redirects away from /login immediately
+      // Detect this by checking if we landed somewhere other than the login page
+      const isLoginPage = url.includes("/login") || url.includes("/login-classic");
+      if (!isLoginPage) {
+        // Already authenticated — try cookie exchange right away
+        await exchangeCookieForTicket(ubiSession);
+      } else {
+        checkCookies();
+      }
     });
 
     ubiAuthWin.on("closed", () => {
