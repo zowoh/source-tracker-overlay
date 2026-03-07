@@ -513,7 +513,7 @@ kbd{background:rgba(93,63,211,.12);border:1px solid rgba(93,63,211,.3);border-ra
       <!-- ── Checking saved session (shown briefly on startup) ── -->
       <div id="checking-panel" style="text-align:center;padding:20px 0 8px">
         <div class="home-loading-spinner" style="margin:0 auto 12px;width:28px;height:28px;border-width:3px"></div>
-        <div style="color:rgba(255,255,255,.5);font-size:13px">Checking for saved session…</div>
+        <div id="check-label" style="color:rgba(255,255,255,.5);font-size:13px">Checking for saved session…</div>
       </div>
 
       <!-- ── Sign in ── -->
@@ -806,11 +806,25 @@ let currentProfile = null;
 
 async function initAuth() {
   if (!window.tracker) return;
-  // Show spinner while we check for a saved/silent session
   document.getElementById('checking-panel').style.display = 'block';
   document.getElementById('creds-panel').style.display    = 'none';
 
+  // Show "taking longer" message if check exceeds 2s
+  const slowTimer = setTimeout(() => {
+    const lbl = document.getElementById('check-label');
+    if (lbl) lbl.textContent = 'Almost there…';
+  }, 2000);
+
+  // Hard 6s fallback — if auth-get never responds, show login UI anyway
+  const fallbackTimer = setTimeout(() => {
+    clearTimeout(slowTimer);
+    document.getElementById('checking-panel').style.display = 'none';
+    document.getElementById('creds-panel').style.display    = 'block';
+  }, 6000);
+
   const state = await window.tracker.authGet();
+  clearTimeout(slowTimer);
+  clearTimeout(fallbackTimer);
 
   if (state.loggedIn && state.user) {
     showApp(state.user);

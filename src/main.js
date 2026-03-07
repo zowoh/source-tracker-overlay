@@ -862,7 +862,7 @@ function fetchJSONPostSoft(url, headers = {}, body = "") {
         hostname: u.hostname, port: u.port || 443,
         path: u.pathname + u.search, method: "POST",
         headers: { ...headers, "Content-Length": Buffer.byteLength(body) },
-        timeout: 15000,
+        timeout: 6000, // 6s max for Ubisoft auth calls — fail fast
       };
       const req = https.request(opts, res => {
         let b = ""; res.on("data", d => b += d);
@@ -984,6 +984,15 @@ function doLogout() {
 
 // ── IPC handlers ──────────────────────────────────────────────────────────────
 ipcMain.handle("auth-get", async () => {
+  // Hard 5s overall timeout — if anything hangs, show login UI immediately
+  const authResult = await Promise.race([
+    _doAuthGet(),
+    new Promise(resolve => setTimeout(() => resolve({ loggedIn: false, hasSaved: false, _timedOut: true }), 5000)),
+  ]);
+  return authResult;
+});
+
+async function _doAuthGet() {
   // Check token cache first — if valid, restore session silently (no browser window)
   const cached = loadTokenCache();
   if (cached) {
@@ -1007,32 +1016,44 @@ ipcMain.handle("auth-get", async () => {
   }
 
   // No valid cached token — try silent cookie exchange before asking user to log in
+  // First check if any Ubisoft cookies exist at all — if not, skip immediately
   try {
-    const silentAuth = await trySilentCookieLogin();
-    if (silentAuth?.ticket) {
-      ubiTicket    = silentAuth.ticket;
-      ubiSessionId = silentAuth.sessionId;
-      ubiExpiry    = silentAuth.expiry;
-      const platform = "uplay";
-      const user = {
-        username:  silentAuth.nameOnPlatform || "Unknown",
-        platform,
-        profileId: silentAuth.profileId || null,
-        profile:   null,
-      };
-      saveTokenCache(ubiTicket, ubiSessionId, ubiExpiry, user);
-      onLoginSuccess(user);
-      setImmediate(() => {
-        sendToOverlay("auth-state", { loggedIn: true, user: currentUser });
-        sendToDesktop("auth-state", { loggedIn: true, user: currentUser });
-      });
-      return { loggedIn: true, user: currentUser };
+    const partition  = "persist:ubi-login";
+    const ubiSession = session.fromPartition(partition);
+    const cookies    = await ubiSession.cookies.get({ domain: ".ubisoft.com" });
+    const hasUbiCookies = cookies && cookies.some(c => c.name.startsWith("ubi"));
+
+    if (hasUbiCookies) {
+      // Cookies exist — attempt exchange with a tight 3s timeout
+      const silentAuth = await Promise.race([
+        trySilentCookieLogin(),
+        new Promise(resolve => setTimeout(() => resolve(null), 3000)),
+      ]);
+      if (silentAuth?.ticket) {
+        ubiTicket    = silentAuth.ticket;
+        ubiSessionId = silentAuth.sessionId;
+        ubiExpiry    = silentAuth.expiry;
+        const platform = "uplay";
+        const user = {
+          username:  silentAuth.nameOnPlatform || "Unknown",
+          platform,
+          profileId: silentAuth.profileId || null,
+          profile:   null,
+        };
+        saveTokenCache(ubiTicket, ubiSessionId, ubiExpiry, user);
+        onLoginSuccess(user);
+        setImmediate(() => {
+          sendToOverlay("auth-state", { loggedIn: true, user: currentUser });
+          sendToDesktop("auth-state", { loggedIn: true, user: currentUser });
+        });
+        return { loggedIn: true, user: currentUser };
+      }
     }
   } catch (_) {}
 
   // No valid cached token — user needs to log in via browser window
   return { loggedIn: false, hasSaved: false };
-});
+}
 
 ipcMain.handle("auth-login", async (_e, opts) => {
   try {
