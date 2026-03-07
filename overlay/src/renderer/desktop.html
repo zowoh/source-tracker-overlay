@@ -1,0 +1,1517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<!-- LootLabs — must be first script in <head> -->
+<script data-cfasync="false" src="https://dcbbwymp1bhlf.cloudfront.net/?wbbcd=1247001"></script>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Source Tracker</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Sora:wght@400;600;700;800&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--p:#5D3FD3;--p2:#a78bfa;--g:#22c55e;--r:#ef4444;--y:#fbbf24;--bg:#000009;--s:#09090f}
+
+html,body{height:100%;background:var(--bg);color:rgba(255,255,255,.9);font-family:'Inter',sans-serif;font-size:14px;overflow:hidden}
+
+/* ─── scanline bg ─── */
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(93,63,211,.008) 3px,rgba(93,63,211,.008) 4px)}
+
+/* ════════════════════════════════════════════════════════
+   LOGIN SCREEN
+   ════════════════════════════════════════════════════════ */
+#login-screen{
+  position:fixed;inset:0;z-index:100;
+  display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(ellipse at 50% 30%,rgba(93,63,211,.12) 0%,transparent 70%),var(--bg);
+}
+#login-screen.hidden{display:none}
+
+.login-box{
+  width:420px;background:var(--s);
+  border:1px solid rgba(93,63,211,.5);border-radius:16px;
+  overflow:hidden;box-shadow:0 0 80px rgba(93,63,211,.18),0 24px 60px rgba(0,0,0,.7);
+}
+.login-top-bar{height:3px;background:linear-gradient(90deg,transparent,#5D3FD3,#a78bfa,#5D3FD3,transparent)}
+.login-body{padding:36px 36px 32px}
+
+.login-logo{text-align:center;margin-bottom:28px}
+.login-logo-title{font-family:'Sora',sans-serif;font-size:26px;font-weight:800;color:#fff;
+  text-shadow:0 0 24px rgba(93,63,211,.6);letter-spacing:.4px}
+.login-logo-sub{font-size:13px;color:rgba(255,255,255,.3);margin-top:5px}
+
+/* Ubisoft logo row */
+.ubi-row{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:26px;
+  padding:10px 0;border-top:1px solid rgba(255,255,255,.06);border-bottom:1px solid rgba(255,255,255,.06)}
+.ubi-icon{width:22px;height:22px;flex-shrink:0}
+.ubi-text{font-size:12px;color:rgba(255,255,255,.38);letter-spacing:.3px}
+.ubi-text strong{color:rgba(255,255,255,.6);font-weight:600}
+
+.form-group{margin-bottom:14px}
+.form-label{font-size:11px;font-weight:600;color:rgba(93,63,211,.8);letter-spacing:1.5px;
+  text-transform:uppercase;margin-bottom:6px;display:block}
+
+.inp{width:100%;background:rgba(93,63,211,.07);border:1px solid rgba(93,63,211,.3);
+  color:#fff;font-family:'Inter',sans-serif;font-size:14px;padding:11px 14px;
+  outline:none;border-radius:8px;transition:border-color .18s,box-shadow .18s}
+.inp:focus{border-color:#5D3FD3;box-shadow:0 0 0 3px rgba(93,63,211,.15)}
+.inp::placeholder{color:rgba(255,255,255,.18)}
+
+.sel{width:100%;background:rgba(93,63,211,.07);border:1px solid rgba(93,63,211,.3);
+  color:#fff;font-family:'Inter',sans-serif;font-size:14px;padding:11px 13px;
+  outline:none;border-radius:8px;cursor:pointer;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23a78bfa' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 13px center}
+.sel option{background:#0c0c1a}
+
+/* Save login checkbox row */
+.save-row{
+  display:flex;align-items:center;gap:10px;
+  background:rgba(93,63,211,.07);border:1px solid rgba(93,63,211,.22);
+  border-radius:8px;padding:11px 14px;margin-bottom:18px;cursor:pointer;
+  transition:border-color .18s;user-select:none;
+}
+.save-row:hover{border-color:rgba(93,63,211,.45)}
+.save-row input[type=checkbox]{
+  width:16px;height:16px;cursor:pointer;accent-color:#5D3FD3;flex-shrink:0;
+}
+.save-row-text{flex:1}
+.save-row-title{font-size:13px;font-weight:600;color:rgba(255,255,255,.85)}
+.save-row-sub{font-size:11px;color:rgba(255,255,255,.35);margin-top:2px}
+
+.login-btn{
+  width:100%;padding:13px 0;border-radius:9px;border:none;
+  background:linear-gradient(135deg,#5D3FD3,#7c3aed);color:#fff;
+  font-family:'Sora',sans-serif;font-weight:700;font-size:15px;
+  cursor:pointer;letter-spacing:.3px;transition:opacity .18s,box-shadow .18s;
+  box-shadow:0 4px 20px rgba(93,63,211,.35);
+}
+.login-btn:hover{opacity:.9;box-shadow:0 4px 28px rgba(93,63,211,.55)}
+.login-btn:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
+
+.login-err{
+  background:rgba(239,68,68,.09);border:1px solid rgba(239,68,68,.3);
+  border-radius:7px;padding:9px 13px;font-size:13px;color:#ef4444;
+  margin-bottom:14px;display:none;
+}
+.login-err.show{display:block}
+.login-note{text-align:center;font-size:11px;color:rgba(255,255,255,.22);margin-top:14px;line-height:1.7}
+
+/* ── Privacy notice ── */
+.privacy-notice{
+  display:flex;align-items:flex-start;gap:9px;
+  background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.22);
+  border-radius:8px;padding:10px 13px;margin-bottom:18px;
+}
+.privacy-notice-icon{font-size:15px;flex-shrink:0;line-height:1.4}
+.privacy-notice-text{font-size:11px;color:rgba(255,255,255,.52);line-height:1.65}
+.privacy-notice-text strong{color:rgba(34,197,94,.9);font-weight:600}
+
+/* ── 2FA panel (hidden until needed) ── */
+#tfa-panel{display:none}
+#tfa-panel.show{display:block}
+.tfa-info{
+  display:flex;align-items:flex-start;gap:9px;
+  background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.28);
+  border-radius:8px;padding:10px 13px;margin-bottom:14px;
+}
+.tfa-info-icon{font-size:15px;flex-shrink:0;line-height:1.4}
+.tfa-info-text{font-size:12px;color:rgba(255,255,255,.55);line-height:1.6}
+.tfa-info-text strong{color:#fbbf24;font-weight:600}
+.tfa-digits{
+  display:flex;gap:8px;justify-content:center;margin-bottom:16px;
+}
+.tfa-digit{
+  width:42px;height:52px;background:rgba(93,63,211,.09);
+  border:1.5px solid rgba(93,63,211,.35);border-radius:8px;
+  color:#fff;font-family:'Sora',sans-serif;font-size:22px;font-weight:700;
+  text-align:center;outline:none;transition:border-color .15s,box-shadow .15s;
+  caret-color:#a78bfa;
+}
+.tfa-digit:focus{border-color:#a78bfa;box-shadow:0 0 0 3px rgba(93,63,211,.2)}
+.tfa-digit.filled{border-color:rgba(93,63,211,.6);background:rgba(93,63,211,.14)}
+.tfa-back{
+  background:none;border:none;color:rgba(255,255,255,.3);font-size:12px;
+  cursor:pointer;padding:0;margin-bottom:12px;display:flex;align-items:center;gap:5px;
+}
+.tfa-back:hover{color:rgba(255,255,255,.6)}
+
+/* autofill chip shown when creds are saved */
+.autofill-chip{
+  display:none;align-items:center;gap:10px;
+  background:rgba(34,197,94,.07);border:1px solid rgba(34,197,94,.28);
+  border-radius:8px;padding:10px 14px;margin-bottom:16px;
+}
+.autofill-chip.show{display:flex}
+.autofill-chip-icon{font-size:16px;flex-shrink:0}
+.autofill-chip-text{flex:1;font-size:13px;color:rgba(255,255,255,.65)}
+.autofill-chip-user{font-weight:700;color:#22c55e}
+
+/* ════════════════════════════════════════════════════════
+   MAIN APP SHELL
+   ════════════════════════════════════════════════════════ */
+#app{height:100%;display:flex;flex-direction:column;position:relative;z-index:1}
+#app.hidden{display:none}
+
+/* ─── Header ─── */
+header{
+  padding:14px 22px 0;flex-shrink:0;
+  border-bottom:1px solid rgba(93,63,211,.22);
+}
+.hrow{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:10px}
+.app-title{font-family:'Sora',sans-serif;font-size:19px;font-weight:800;color:#fff;
+  animation:glow 4s infinite;flex-shrink:0}
+.h-sub{font-size:12px;color:rgba(93,63,211,.55);border-left:1px solid rgba(93,63,211,.2);
+  padding-left:12px;flex-shrink:0}
+
+/* user chip */
+.user-chip{
+  display:flex;align-items:center;gap:8px;
+  background:rgba(93,63,211,.1);border:1px solid rgba(93,63,211,.3);
+  border-radius:20px;padding:5px 5px 5px 12px;flex-shrink:0;
+}
+.user-chip-name{font-size:13px;font-weight:600;color:#a78bfa}
+.user-chip-plat{font-size:10px;color:rgba(255,255,255,.3);margin-left:2px}
+.logout-btn{
+  background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.28);
+  color:#ef4444;border-radius:14px;padding:4px 11px;font-size:11px;font-weight:600;
+  cursor:pointer;transition:all .15s;white-space:nowrap;
+}
+.logout-btn:hover{background:rgba(239,68,68,.22);border-color:rgba(239,68,68,.5)}
+
+.help-btn{
+  display:flex;align-items:center;gap:5px;
+  background:rgba(88,101,242,.12);border:1px solid rgba(88,101,242,.35);
+  color:#8b9cf4;border-radius:14px;padding:5px 11px;font-size:11px;font-weight:600;
+  cursor:pointer;text-decoration:none;transition:all .15s;white-space:nowrap;
+}
+.help-btn:hover{background:rgba(88,101,242,.25);border-color:rgba(88,101,242,.6);color:#a5b4fc}
+
+/* match status dot */
+.gs{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;flex-shrink:0}
+.gdot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.18);flex-shrink:0}
+.gdot.on{background:var(--g);animation:pulse 1.6s infinite}
+
+/* ─── Layout ─── */
+.layout{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
+
+/* ─── Tab bar ─── */
+.tab-bar{
+  display:flex;align-items:flex-end;gap:2px;
+  padding:0 18px;border-bottom:1px solid rgba(93,63,211,.22);
+  flex-shrink:0;background:rgba(93,63,211,.02);
+}
+.tab-btn{
+  padding:9px 18px 8px;font-family:'Sora',sans-serif;font-size:12px;font-weight:700;
+  letter-spacing:.6px;text-transform:uppercase;
+  background:none;border:none;border-bottom:2px solid transparent;
+  color:rgba(255,255,255,.3);cursor:pointer;transition:all .18s;margin-bottom:-1px;
+  white-space:nowrap;
+}
+.tab-btn:hover{color:rgba(255,255,255,.6)}
+.tab-btn.active{color:#a78bfa;border-bottom-color:#5D3FD3}
+
+/* ─── Tab content ─── */
+.tab-content{display:none;flex:1;min-height:0;overflow:hidden}
+.tab-content.active{display:flex}
+
+/* ═══════════════════════════
+   HOME TAB
+   ═══════════════════════════ */
+#tab-home{flex-direction:column;overflow-y:auto;padding:20px 24px 24px;gap:20px}
+#tab-home::-webkit-scrollbar{width:3px}
+#tab-home::-webkit-scrollbar-thumb{background:rgba(93,63,211,.3);border-radius:3px}
+
+/* Home hero card */
+.home-hero{
+  background:var(--s);border:1px solid rgba(93,63,211,.35);border-radius:12px;
+  overflow:hidden;position:relative;flex-shrink:0;
+}
+.home-hero::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,#5D3FD3,#a78bfa,#5D3FD3,transparent)}
+.home-hero-body{padding:22px 24px 20px;display:flex;align-items:center;gap:20px}
+.home-avatar{
+  width:64px;height:64px;border-radius:50%;flex-shrink:0;
+  background:linear-gradient(135deg,#5D3FD3,#3b1fa8);
+  border:2px solid rgba(93,63,211,.5);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Sora',sans-serif;font-size:24px;font-weight:800;color:#fff;
+}
+.home-hero-info{flex:1;min-width:0}
+.home-username{font-family:'Sora',sans-serif;font-size:22px;font-weight:800;color:#fff;
+  text-shadow:0 0 20px rgba(93,63,211,.5)}
+.home-platform{font-size:11px;color:rgba(255,255,255,.35);margin-top:3px}
+.home-rank-badge{
+  display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0;gap:4px
+}
+.home-rank-text{font-family:'Sora',sans-serif;font-size:18px;font-weight:800}
+.home-mmr-text{font-size:11px;color:rgba(255,255,255,.35)}
+
+/* Home stats grid */
+.home-stats-grid{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:12px;flex-shrink:0;
+}
+@media (max-width:900px){.home-stats-grid{grid-template-columns:repeat(2,1fr)}}
+.stat-card{
+  background:var(--s);border:1px solid rgba(93,63,211,.22);border-radius:10px;
+  padding:16px 14px;text-align:center;transition:border-color .18s;
+}
+.stat-card:hover{border-color:rgba(93,63,211,.45)}
+.stat-val{font-family:'Sora',sans-serif;font-size:26px;font-weight:800;margin-bottom:4px}
+.stat-lbl{font-size:10px;color:rgba(255,255,255,.35);letter-spacing:1.5px;text-transform:uppercase}
+.stat-sub{font-size:10px;color:rgba(255,255,255,.2);margin-top:3px}
+
+/* Season history */
+.home-section-title{
+  font-family:'Sora',sans-serif;font-size:10px;font-weight:700;letter-spacing:2.5px;
+  color:rgba(93,63,211,.75);text-transform:uppercase;margin-bottom:10px;
+}
+.season-grid{display:flex;flex-wrap:wrap;gap:8px}
+.season-card{
+  background:var(--s);border:1px solid rgba(93,63,211,.2);border-radius:8px;
+  padding:10px 13px;min-width:110px;transition:border-color .18s;
+}
+.season-card:hover{border-color:rgba(93,63,211,.45)}
+.season-name{font-size:10px;color:rgba(255,255,255,.3);margin-bottom:4px;font-weight:600}
+.season-rank{font-size:13px;font-weight:700}
+.season-mmr{font-size:10px;color:rgba(255,255,255,.3);margin-top:2px}
+.season-stat{font-size:11px;font-weight:700;margin-top:3px}
+.season-wl{font-size:10px;margin-top:3px;color:rgba(255,255,255,.5)}
+
+/* Loading skeleton for home */
+.home-loading{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:14px;flex:1;color:rgba(255,255,255,.3);font-size:14px;
+}
+.home-loading-spinner{
+  width:32px;height:32px;border:2px solid rgba(93,63,211,.2);border-top-color:#5D3FD3;
+  border-radius:50%;animation:spin .8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Detection badge on home */
+.home-detection{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:11px;font-weight:700;padding:4px 10px;border-radius:5px;margin-top:6px;
+}
+
+/* ═══════════════════════════
+   LIVE MATCH TAB
+   ═══════════════════════════ */
+#tab-match{flex-direction:row;overflow:hidden}
+
+/* Sidebar */
+.match-sidebar{
+  width:240px;flex-shrink:0;border-right:1px solid rgba(93,63,211,.18);
+  display:flex;flex-direction:column;overflow-y:auto;background:rgba(93,63,211,.02);
+}
+.match-sidebar::-webkit-scrollbar{width:3px}
+.match-sidebar::-webkit-scrollbar-thumb{background:rgba(93,63,211,.3);border-radius:3px}
+
+/* ad block in sidebar */
+.ad-sidebar{
+  margin:12px;border-radius:8px;overflow:hidden;
+  background:rgba(93,63,211,.04);border:1px dashed rgba(93,63,211,.15);
+  min-height:250px;display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+.ad-sidebar-placeholder{font-size:11px;color:rgba(255,255,255,.1);letter-spacing:1px;text-transform:uppercase}
+
+/* Match main */
+.match-main{
+  flex:1;display:flex;flex-direction:column;gap:10px;
+  padding:14px 16px 16px;overflow-y:auto;min-height:0;
+}
+.match-main::-webkit-scrollbar{width:3px}
+.match-main::-webkit-scrollbar-thumb{background:rgba(93,63,211,.3);border-radius:3px}
+
+/* leaderboard ad strip above roster */
+.ad-leaderboard{
+  border-radius:8px;overflow:hidden;width:100%;
+  background:rgba(93,63,211,.04);border:1px dashed rgba(93,63,211,.15);
+  height:90px;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.ad-leaderboard-placeholder{font-size:11px;color:rgba(255,255,255,.1);letter-spacing:1px;text-transform:uppercase}
+
+/* ─── Panel ─── */
+.panel{
+  background:var(--s);border:1px solid rgba(93,63,211,.28);border-radius:10px;
+  overflow:hidden;position:relative;flex-shrink:0;
+}
+.panel::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(93,63,211,.6),transparent)}
+.ph{display:flex;align-items:center;justify-content:space-between;
+  padding:10px 14px;border-bottom:1px solid rgba(93,63,211,.1)}
+.plbl{font-family:'Sora',sans-serif;font-size:10px;font-weight:700;
+  letter-spacing:2.5px;color:rgba(93,63,211,.75);text-transform:uppercase}
+
+/* ─── Sidebar panels ─── */
+.sb-section{padding:12px 12px 8px}
+.sb-label{font-family:'Sora',sans-serif;font-size:10px;font-weight:700;
+  letter-spacing:2px;color:rgba(93,63,211,.65);text-transform:uppercase;margin-bottom:8px}
+
+#banner{
+  background:rgba(93,63,211,.07);border:1px solid rgba(93,63,211,.2);
+  border-radius:7px;padding:9px 12px;font-size:12px;color:rgba(255,255,255,.42);
+  line-height:1.6;
+}
+#banner.live{background:rgba(239,68,68,.07);border-color:rgba(239,68,68,.28);color:#ef4444}
+#banner.done{background:rgba(34,197,94,.07);border-color:rgba(34,197,94,.25);color:#22c55e}
+
+/* ─── Roster grid ─── */
+.th{font-family:'Sora',sans-serif;font-size:10px;font-weight:700;letter-spacing:1.8px;
+  text-transform:uppercase;padding:6px 14px 2px}
+.th.your{color:var(--p2)}.th.enemy{color:#f87171}
+.rg{display:grid;gap:8px;padding:8px 14px 12px}
+.rg.your-grid{grid-template-columns:repeat(4,1fr)}
+.rg.enemy-grid{grid-template-columns:repeat(5,1fr)}
+.vsbar{margin:2px 14px;height:1px;position:relative;
+  background:linear-gradient(90deg,transparent 0%,rgba(93,63,211,.5) 20%,rgba(93,63,211,.8) 45%,rgba(248,113,113,.8) 55%,rgba(248,113,113,.5) 80%,transparent 100%)}
+.vsbar::before{content:'VS';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  background:var(--s);padding:0 9px;
+  font-family:'Sora',sans-serif;font-size:9px;font-weight:800;letter-spacing:3px;color:var(--p2)}
+
+/* ─── Player cards ─── */
+.card{background:#0d0d1a;border:1px solid rgba(93,63,211,.16);border-radius:7px;padding:10px;
+  min-height:85px;transition:border-color .18s}
+.card:hover{border-color:rgba(93,63,211,.4)}
+.card.enemy{border-color:rgba(248,113,113,.09)}
+.card.enemy:hover{border-color:rgba(248,113,113,.35)}
+.cn{font-weight:700;font-size:12px;color:#fff;margin-bottom:3px;word-break:break-all;line-height:1.3}
+.cn.you{color:var(--p2)}.cn.anon{color:rgba(255,255,255,.38);font-style:italic}
+.cr{font-size:11px;font-weight:500;margin-bottom:5px}
+.cstats{display:flex;justify-content:space-between;align-items:center}
+.csv{font-family:'Sora',sans-serif;font-size:14px;font-weight:700}
+.csl{font-size:9px;color:rgba(255,255,255,.3)}
+.cbadge{font-size:10px;font-weight:700;padding:2px 5px;border-radius:3px;
+  margin-top:4px;display:inline-block;line-height:1.4}
+.pb{font-size:10px;color:rgba(255,255,255,.28);background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.09);padding:2px 7px;border-radius:3px}
+.card-inp{width:100%;background:rgba(93,63,211,.08);border:1px solid rgba(93,63,211,.28);
+  color:#fff;font-family:'Inter',sans-serif;font-size:11px;padding:5px 8px;
+  outline:none;border-radius:5px;margin-bottom:5px}
+.card-inp::placeholder{color:rgba(255,255,255,.18)}
+.card-inp:focus{border-color:#5D3FD3}
+.card-go{width:100%;background:rgba(93,63,211,.1);border:1px solid rgba(93,63,211,.32);
+  color:#a78bfa;font-size:11px;font-weight:600;padding:4px 0;border-radius:4px;cursor:pointer}
+.card-go:hover{background:rgba(93,63,211,.22)}
+
+/* ═══════════════════════════
+   LOOKUP TAB
+   ═══════════════════════════ */
+#tab-lookup{flex-direction:column;padding:20px 24px;gap:16px;overflow-y:auto}
+#tab-lookup::-webkit-scrollbar{width:3px}
+#tab-lookup::-webkit-scrollbar-thumb{background:rgba(93,63,211,.3);border-radius:3px}
+
+.lookup-search-row{display:flex;gap:10px;align-items:flex-end;flex-shrink:0}
+.lookup-search-row .inp{flex:1}
+.lookup-search-row .sel{width:200px;flex-shrink:0}
+.lookup-go{
+  height:44px;padding:0 20px;border-radius:8px;border:none;
+  background:linear-gradient(135deg,#5D3FD3,#7c3aed);color:#fff;
+  font-family:'Sora',sans-serif;font-weight:700;font-size:13px;
+  cursor:pointer;letter-spacing:.3px;transition:opacity .18s;flex-shrink:0;white-space:nowrap;
+}
+.lookup-go:hover{opacity:.9}
+.lookup-go:disabled{opacity:.4;cursor:not-allowed}
+
+#lookup-result{flex-shrink:0}
+
+/* Full stat card in lookup */
+.full-card{
+  background:var(--s);border:1px solid rgba(93,63,211,.35);border-radius:12px;
+  overflow:hidden;position:relative;
+}
+.full-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,#5D3FD3,#a78bfa,#5D3FD3,transparent)}
+.full-card-head{padding:18px 20px;display:flex;align-items:center;gap:16px;
+  border-bottom:1px solid rgba(93,63,211,.1)}
+.full-card-name{font-family:'Sora',sans-serif;font-size:20px;font-weight:800;color:#fff}
+.full-card-rank{font-size:15px;font-weight:700;margin-top:3px}
+.full-card-body{padding:16px 20px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+@media (max-width:900px){.full-card-body{grid-template-columns:repeat(2,1fr)}}
+
+/* ─── Shimmer ─── */
+.sh{background:linear-gradient(90deg,rgba(93,63,211,.06) 25%,rgba(93,63,211,.13) 50%,rgba(93,63,211,.06) 75%);
+  background-size:200% 100%;animation:shim 1.4s infinite;border-radius:4px}
+
+/* ─── Footer ─── */
+.footer{text-align:center;font-size:11px;color:rgba(255,255,255,.15);padding:6px 0 8px;flex-shrink:0}
+kbd{background:rgba(93,63,211,.12);border:1px solid rgba(93,63,211,.3);border-radius:3px;
+  padding:1px 5px;font-size:10px;color:var(--p2)}
+
+/* ─── Clear btn ─── */
+.clr-btn{background:rgba(93,63,211,.08);border:1px solid rgba(93,63,211,.25);
+  color:#a78bfa;border-radius:5px;padding:4px 11px;font-size:11px;cursor:pointer}
+.clr-btn:hover{background:rgba(93,63,211,.2)}
+
+/* ─── Animations ─── */
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.2;transform:scale(.45)}}
+@keyframes shim{0%{background-position:200% 0}100%{background-position:-200% 0}}
+@keyframes glow{0%,100%{text-shadow:0 0 12px rgba(93,63,211,.5)}50%{text-shadow:0 0 24px rgba(93,63,211,.9),0 0 48px rgba(93,63,211,.4)}}
+@keyframes fi{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.fi{animation:fi .3s ease both}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════
+     LOGIN SCREEN
+     ══════════════════════════════════════════════════════ -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-top-bar"></div>
+    <div class="login-body">
+
+      <div class="login-logo">
+        <svg width="56" height="56" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-bottom:10px;filter:drop-shadow(0 0 18px rgba(93,63,211,.7))">
+          <path d="M50 6 L88 22 L88 52 Q88 76 50 94 Q12 76 12 52 L12 22 Z" fill="url(#lg)" stroke="rgba(167,139,250,.5)" stroke-width="2"/>
+          <defs>
+            <linearGradient id="lg" x1="50" y1="6" x2="50" y2="94" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#7c3aed"/>
+              <stop offset="100%" stop-color="#3b1fa8"/>
+            </linearGradient>
+          </defs>
+          <text x="50" y="62" text-anchor="middle" font-family="'Sora',sans-serif" font-size="32" font-weight="800" fill="white" letter-spacing="-1">ST</text>
+        </svg>
+        <div class="login-logo-title">Source Tracker</div>
+        <div class="login-logo-sub">R6 Siege Intelligence Overlay</div>
+      </div>
+
+      <!-- Ubisoft branding row -->
+      <div class="ubi-row">
+        <svg class="ubi-icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="20" cy="20" r="19" stroke="#0077FF" stroke-width="1.5" fill="rgba(0,119,255,.08)"/>
+          <path d="M20 8C13.373 8 8 13.373 8 20s5.373 12 12 12 12-5.373 12-12S26.627 8 20 8zm0 3a9 9 0 0 1 9 9 9 9 0 0 1-9 9 9 9 0 0 1-9-9 9 9 0 0 1 9-9zm0 3a6 6 0 0 0-6 6 6 6 0 0 0 6 6 6 6 0 0 0 6-6 6 6 0 0 0-6-6z" fill="#0077FF"/>
+        </svg>
+        <span class="ubi-text">Sign in with your <strong>Ubisoft Connect</strong> username</span>
+      </div>
+
+      <!-- Privacy notice -->
+      <div class="privacy-notice">
+        <span class="privacy-notice-icon">🔒</span>
+        <div class="privacy-notice-text">
+          <strong>Your info is stored locally only.</strong><br>
+          Credentials are encrypted on your device using Windows DPAPI. The developer and no one else ever has access to them — they are never sent to any server.
+        </div>
+      </div>
+
+      <!-- Autofill chip (shown when saved creds exist) -->
+      <div class="autofill-chip" id="autofill-chip">
+        <span class="autofill-chip-icon">🔐</span>
+        <div class="autofill-chip-text">
+          Saved login: <span class="autofill-chip-user" id="autofill-user">—</span>
+          <div style="font-size:11px;color:rgba(255,255,255,.3);margin-top:1px">Credentials autofilled below</div>
+        </div>
+      </div>
+
+      <div class="login-err" id="login-err"></div>
+
+      <!-- ── Sign in ── -->
+      <div id="creds-panel">
+        <div class="form-group" style="margin-bottom:16px">
+          <label class="form-label" for="inp-platform">Platform</label>
+          <select class="sel" id="inp-platform">
+            <option value="uplay">PC — Ubisoft Connect</option>
+            <option value="psn">PlayStation Network</option>
+            <option value="xbl">Xbox Live</option>
+          </select>
+        </div>
+
+        <label class="save-row" id="save-row" for="chk-save">
+          <input type="checkbox" id="chk-save" checked/>
+          <div class="save-row-text">
+            <div class="save-row-title">💾 Stay signed in</div>
+            <div class="save-row-sub">Skip the login window next time (session token cached locally)</div>
+          </div>
+        </label>
+
+        <button class="login-btn" id="login-btn" onclick="doLogin()">
+          Sign in with Ubisoft Connect
+        </button>
+        <div style="text-align:center;font-size:11px;color:rgba(255,255,255,.3);margin-top:8px">
+          A Ubisoft login window will open — 2FA is handled automatically
+        </div>
+      </div>
+
+      <!-- ── Step 2: 2FA code (shown only if account has 2FA) ── -->
+      <div id="tfa-panel">
+        <button class="tfa-back" onclick="showCredsPanel()">← Back</button>
+
+        <div class="tfa-info">
+          <span class="tfa-info-icon">📱</span>
+          <div class="tfa-info-text">
+            <strong>Two-factor authentication required.</strong><br>
+            Enter the 6-digit code from your Ubisoft authenticator app or SMS.
+          </div>
+        </div>
+
+        <div class="tfa-digits">
+          <input class="tfa-digit" id="tfa-0" type="text" inputmode="numeric" maxlength="1"/>
+          <input class="tfa-digit" id="tfa-1" type="text" inputmode="numeric" maxlength="1"/>
+          <input class="tfa-digit" id="tfa-2" type="text" inputmode="numeric" maxlength="1"/>
+          <input class="tfa-digit" id="tfa-3" type="text" inputmode="numeric" maxlength="1"/>
+          <input class="tfa-digit" id="tfa-4" type="text" inputmode="numeric" maxlength="1"/>
+          <input class="tfa-digit" id="tfa-5" type="text" inputmode="numeric" maxlength="1"/>
+        </div>
+
+        <button class="login-btn" id="tfa-btn" onclick="doSubmit2FA()">Verify &amp; Sign In</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     MAIN APP
+     ══════════════════════════════════════════════════════ -->
+<div id="app" class="hidden">
+
+  <header>
+    <div class="hrow">
+      <!-- Left: logo icon + title only -->
+      <div style="display:flex;align-items:center;gap:10px;min-width:0">
+        <svg width="28" height="28" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M50 6 L88 22 L88 52 Q88 76 50 94 Q12 76 12 52 L12 22 Z" fill="url(#sg)" stroke="rgba(167,139,250,.4)" stroke-width="2"/>
+          <defs>
+            <linearGradient id="sg" x1="50" y1="6" x2="50" y2="94" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#7c3aed"/>
+              <stop offset="100%" stop-color="#3b1fa8"/>
+            </linearGradient>
+          </defs>
+          <text x="50" y="62" text-anchor="middle" font-family="'Sora',sans-serif" font-size="32" font-weight="800" fill="white" letter-spacing="-1">ST</text>
+        </svg>
+        <span class="app-title">Source Tracker</span>
+      </div>
+      <!-- Right: match status + user chip + Discord help -->
+      <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
+        <div class="gs">
+          <div class="gdot" id="gdot"></div>
+          <span id="gstatus" style="color:rgba(255,255,255,.45)">Waiting...</span>
+        </div>
+        <div class="user-chip" id="user-chip">
+          <span class="user-chip-name" id="chip-name">—</span>
+          <button class="logout-btn" onclick="doLogout()">Sign Out</button>
+        </div>
+        <button class="help-btn" title="Join Discord for help" onclick="openDiscord()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
+          Help
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+
+    <!-- ── Tab bar ── -->
+    <div class="tab-bar">
+      <button class="tab-btn active" id="tab-btn-home"  onclick="switchTab('home')">🏠 Home</button>
+      <button class="tab-btn"        id="tab-btn-match" onclick="switchTab('match')">🔴 Live Match</button>
+      <button class="tab-btn"        id="tab-btn-lookup"onclick="switchTab('lookup')">🔍 Lookup</button>
+    </div>
+
+    <!-- ══════════════════════════════════════════════
+         HOME TAB — signed-in user's stats
+         ══════════════════════════════════════════════ -->
+    <div class="tab-content active" id="tab-home">
+      <div id="home-loading" class="home-loading">
+        <div class="home-loading-spinner"></div>
+        <div>Loading your stats…</div>
+      </div>
+      <div id="home-content" style="display:none;flex-direction:column;gap:20px;width:100%">
+        <!-- Hero card -->
+        <div class="home-hero fi">
+          <div class="home-hero-body">
+            <div class="home-avatar" id="home-avatar">?</div>
+            <div class="home-hero-info">
+              <div class="home-username" id="home-username">—</div>
+              <div class="home-platform" id="home-platform"></div>
+              <div id="home-detection"></div>
+            </div>
+            <div class="home-rank-badge">
+              <div class="home-rank-text" id="home-rank">—</div>
+              <div class="home-mmr-text" id="home-mmr"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stats grid -->
+        <div class="home-stats-grid fi" id="home-stats-grid"></div>
+
+        <!-- Season history -->
+        <div id="home-seasons-section" style="display:none">
+          <div class="home-section-title">Season History</div>
+          <div class="season-grid" id="home-seasons"></div>
+        </div>
+      </div>
+      <div id="home-error" style="display:none;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:12px;color:rgba(255,255,255,.3)">
+        <div style="font-size:32px">😶</div>
+        <div id="home-error-msg" style="font-size:14px">Stats not available</div>
+        <button class="card-go" style="width:auto;padding:6px 18px" onclick="retryHomeStats()">↺ Retry</button>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════
+         LIVE MATCH TAB
+         ══════════════════════════════════════════════ -->
+    <div class="tab-content" id="tab-match">
+      <!-- Sidebar -->
+      <div class="match-sidebar">
+        <div class="sb-section">
+          <div class="sb-label">Status</div>
+          <div id="banner">
+            Waiting for a match. Enter enemy usernames in the roster, or let the web app auto-push them via the WebSocket bridge.
+          </div>
+        </div>
+
+        <div class="sb-section" style="padding-top:0">
+          <div class="sb-label">Hotkey</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.35);line-height:1.9">
+            Toggle overlay: <kbd>Alt+G</kbd><br>
+            Click-through: 🖱 button in overlay
+          </div>
+        </div>
+
+        <!-- LootLabs sidebar ad (300×250) -->
+        <div style="flex:1"></div>
+        <div class="ad-sidebar" id="ad-sidebar">
+          <div id="ad-banner" style="width:300px;min-height:250px;display:flex;align-items:center;justify-content:center"></div>
+        </div>
+      </div>
+
+      <!-- Match main content -->
+      <div class="match-main">
+        <!-- LootLabs leaderboard ad (728×90) -->
+        <div class="ad-leaderboard" id="ad-leaderboard">
+          <div id="ad-leaderboard-inner" style="width:100%;min-height:90px;display:flex;align-items:center;justify-content:center"></div>
+        </div>
+
+        <!-- Roster panel -->
+        <div class="panel fi" id="roster-panel">
+          <div class="ph">
+            <span class="plbl">Match Roster</span>
+            <button class="clr-btn" onclick="doClear()">↺ Clear</button>
+          </div>
+
+          <div class="th your">Your Team</div>
+          <div class="rg your-grid" id="your-team"></div>
+
+          <div class="vsbar"></div>
+
+          <div class="th enemy">Enemy Team</div>
+          <div class="rg enemy-grid" id="enemy-team"></div>
+        </div>
+
+        <div class="footer">In-game overlay: <kbd>Alt+G</kbd> &nbsp;·&nbsp; Source Tracker v1.0</div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════
+         LOOKUP TAB
+         ══════════════════════════════════════════════ -->
+    <div class="tab-content" id="tab-lookup">
+      <div class="lookup-search-row">
+        <input class="inp" id="lookup-inp" type="text" placeholder="Ubisoft username…" spellcheck="false"
+          onkeydown="if(event.key==='Enter') doLookup()"/>
+        <select class="sel" id="lookup-plat" style="width:180px">
+          <option value="uplay">PC — Ubisoft Connect</option>
+          <option value="psn">PlayStation Network</option>
+          <option value="xbl">Xbox Live</option>
+        </select>
+        <button class="lookup-go" id="lookup-go" onclick="doLookup()">Search</button>
+      </div>
+      <div id="lookup-result"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const rc = r => {
+  if (!r) return '#a78bfa';
+  const s = r.toLowerCase();
+  if (s.includes('champion')) return '#f0c040';
+  if (s.includes('diamond'))  return '#a78bfa';
+  if (s.includes('emerald'))  return '#34d399';
+  if (s.includes('platinum')) return '#67e8f9';
+  if (s.includes('gold'))     return '#fbbf24';
+  if (s.includes('silver'))   return '#94a3b8';
+  if (s.includes('bronze'))   return '#cd7f32';
+  return '#a78bfa';
+};
+const sc = (v, t = 1.0) => {
+  const n = parseFloat(v);
+  return isNaN(n) ? 'rgba(255,255,255,.4)' : (n >= t ? '#22c55e' : '#ef4444');
+};
+const emo = v => ({ likely_cheater:'🚨', likely_smurf:'🎭', suspicious:'⚠️' }[v] || '');
+const fmt = n => n == null ? '—' : (typeof n === 'number' && n >= 1000 ? n.toLocaleString() : n);
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+let currentTab = 'home';
+function switchTab(name) {
+  currentTab = name;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById(`tab-btn-${name}`).classList.add('active');
+  document.getElementById(`tab-${name}`).classList.add('active');
+}
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+let loginBusy = false;
+let currentProfile = null;
+
+async function initAuth() {
+  if (!window.tracker) return;
+  const state = await window.tracker.authGet();
+  if (state.loggedIn && state.user) showApp(state.user);
+}
+
+async function doLogin() {
+  if (loginBusy) return;
+  const save = document.getElementById('chk-save')?.checked !== false;
+  loginBusy = true;
+  const btn = document.getElementById('login-btn');
+  btn.disabled = true;
+  btn.textContent = 'Opening Ubisoft login…';
+  hideErr();
+
+  const result = await window.tracker.authLogin({ save });
+  loginBusy = false;
+  btn.disabled = false;
+  btn.textContent = 'Sign in with Ubisoft Connect';
+
+  if (result.success) {
+    showApp(result.user);
+  } else {
+    showErr(result.error || 'Sign-in failed. Please try again.');
+  }
+}
+
+// ── Panel switchers (kept for login screen) ───────────────────────────────────
+function showCredsPanel() {
+  document.getElementById('tfa-panel').classList.remove('show');
+  document.getElementById('creds-panel').style.display = '';
+  hideErr();
+}
+
+// ── 2FA digit box keyboard behaviour ─────────────────────────────────────────
+document.querySelectorAll('.tfa-digit').forEach((inp, i, all) => {
+  inp.addEventListener('input', e => {
+    inp.value = inp.value.replace(/\D/g, '').slice(-1);
+    inp.classList.toggle('filled', inp.value !== '');
+    if (inp.value && i < all.length - 1) all[i + 1].focus();
+    if (Array.from(all).every(d => d.value !== '')) doSubmit2FA();
+  });
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Backspace' && !inp.value && i > 0) all[i - 1].focus();
+    if (e.key === 'Enter') doSubmit2FA();
+  });
+  inp.addEventListener('paste', e => {
+    e.preventDefault();
+    const paste = (e.clipboardData.getData('text') || '').replace(/\D/g, '').slice(0, 6);
+    paste.split('').forEach((ch, j) => {
+      if (all[i + j]) { all[i + j].value = ch; all[i + j].classList.add('filled'); }
+    });
+    const next = all[Math.min(i + paste.length, all.length - 1)];
+    next?.focus();
+    if (paste.length === 6) doSubmit2FA();
+  });
+});
+
+// ── Show app after login ──────────────────────────────────────────────────────
+function showApp(user) {
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  showCredsPanel();
+
+  const platLabels = { uplay:'PC', psn:'PSN', xbl:'XBL' };
+  document.getElementById('chip-name').textContent = user.username;
+
+  // Load home stats
+  renderHomeLoading();
+  if (user.profile) {
+    renderHomeStats(user.username, user.platform, user.profile);
+  } else {
+    loadHomeStats(user.username, user.platform);
+  }
+
+  // Load roster
+  window.tracker.getRoster().then(renderRoster).catch(() => {});
+
+  switchTab('home');
+}
+
+async function doLogout() {
+  await window.tracker.authLogout();
+  document.getElementById('app').classList.add('hidden');
+  document.getElementById('login-screen').classList.remove('hidden');
+  document.getElementById('autofill-chip').classList.remove('show');
+  currentProfile = null;
+  hideErr();
+}
+
+function showErr(msg) {
+  const el = document.getElementById('login-err');
+  el.textContent = msg;
+  el.classList.add('show');
+}
+function hideErr() {
+  document.getElementById('login-err').classList.remove('show');
+}
+
+// ── HOME TAB ──────────────────────────────────────────────────────────────────
+let homeUsername = null;
+let homePlatform = 'uplay';
+
+function renderHomeLoading() {
+  document.getElementById('home-loading').style.display = 'flex';
+  document.getElementById('home-content').style.display = 'none';
+  document.getElementById('home-error').style.display   = 'none';
+}
+
+function renderHomeError(msg) {
+  document.getElementById('home-loading').style.display = 'none';
+  document.getElementById('home-content').style.display = 'none';
+  document.getElementById('home-error').style.display   = 'flex';
+  document.getElementById('home-error-msg').textContent = msg || 'Stats not available';
+}
+
+async function loadHomeStats(username, platform) {
+  homeUsername = username;
+  homePlatform = platform || 'uplay';
+  renderHomeLoading();
+  try {
+    const profile = await window.tracker.lookupPlayer({ username, platform: homePlatform });
+    if (profile?.error || !profile?.username) {
+      renderHomeError(profile?.error || 'Player not found');
+    } else {
+      renderHomeStats(username, homePlatform, profile);
+    }
+  } catch (e) {
+    renderHomeError(e.message || 'Failed to load stats');
+  }
+}
+
+function retryHomeStats() {
+  if (homeUsername) loadHomeStats(homeUsername, homePlatform);
+}
+
+function renderHomeStats(username, platform, p) {
+  currentProfile = p;
+  document.getElementById('home-loading').style.display = 'none';
+  document.getElementById('home-error').style.display   = 'none';
+  const content = document.getElementById('home-content');
+  content.style.display = 'flex';
+
+  // Avatar initials
+  const initials = (p._displayName || p.username || username || '?').charAt(0).toUpperCase();
+  document.getElementById('home-avatar').textContent = initials;
+
+  // Name + platform
+  document.getElementById('home-username').textContent = p._displayName || p.username || username;
+  const platLabels = { uplay:'PC · Ubisoft Connect', psn:'PlayStation Network', xbl:'Xbox Live' };
+  document.getElementById('home-platform').textContent = (platLabels[platform] || platform.toUpperCase())
+    + (p.level ? `  ·  Level ${p.level}` : '');
+
+  // Rank
+  const rankEl = document.getElementById('home-rank');
+  rankEl.textContent = p.rank || 'Unranked';
+  rankEl.style.color = rc(p.rank);
+  document.getElementById('home-mmr').textContent = p.mmr ? `${p.mmr} RP` : '';
+
+  // Detection + inactive badge
+  const detEl = document.getElementById('home-detection');
+  let detHtml = '';
+  if (p.detection?.verdict && p.detection.verdict !== 'clean' && p.detection.label) {
+    detHtml += `<span class="home-detection" style="color:${p.detection.color};background:${p.detection.color}18;border:1px solid ${p.detection.color}44">${emo(p.detection.verdict)} ${p.detection.label}</span>`;
+  }
+  if (p.isInactive) {
+    detHtml += `<span class="home-detection" style="color:#9ca3af;background:rgba(107,114,128,.12);border:1px solid rgba(107,114,128,.3);margin-left:4px">⏸ Inactive — no ranked in last 5 seasons</span>`;
+  }
+  detEl.innerHTML = detHtml;
+
+  // Stats grid
+  const grid = document.getElementById('home-stats-grid');
+  const stats = [
+    { val: p.kd     != null ? p.kd   : '—', lbl: 'K/D Ratio',  color: sc(p.kd),           sub: p.kills != null ? `${fmt(p.kills)} kills` : '' },
+    { val: p.winRate!= null ? p.winRate+'%':'—', lbl: 'Win Rate', color: sc(p.winRate, 50), sub: p.wins != null ? `${fmt(p.wins)} wins` : '' },
+    { val: p.level  != null ? p.level : '—', lbl: 'Level',       color: 'rgba(255,255,255,.9)', sub: '' },
+    { val: p.mmr    != null ? p.mmr   : '—', lbl: 'MMR',         color: rc(p.rank),         sub: p.rank || '' },
+    { val: p.headshotRate != null ? p.headshotRate+'%' : '—', lbl: 'Headshot %', color: sc(p.headshotRate, 40), sub: '' },
+    { val: p.timePlayed   != null ? p.timePlayed       : '—', lbl: 'Time Played', color: 'rgba(255,255,255,.8)', sub: '' },
+    { val: p.kills  != null ? fmt(p.kills) : '—',     lbl: 'Total Kills',   color: 'rgba(255,255,255,.85)', sub: '' },
+    { val: p.deaths != null ? fmt(p.deaths): '—',     lbl: 'Total Deaths',  color: 'rgba(255,255,255,.5)',  sub: '' },
+  ];
+  grid.innerHTML = stats.map(s => `
+    <div class="stat-card">
+      <div class="stat-val" style="color:${s.color}">${s.val}</div>
+      <div class="stat-lbl">${s.lbl}</div>
+      ${s.sub ? `<div class="stat-sub">${s.sub}</div>` : ''}
+    </div>`).join('');
+
+  // Season history
+  const seasons = p.seasonHistory || p.seasons || [];
+  const seasSection = document.getElementById('home-seasons-section');
+  if (seasons.length > 0) {
+    seasSection.style.display = 'block';
+    document.getElementById('home-seasons').innerHTML = seasons.slice(0,8).map(s => {
+      const kdN  = parseFloat(s.kd);
+      const wrN  = parseFloat(s.winRate);
+      const kdC  = isNaN(kdN)  ? 'rgba(255,255,255,.5)' : kdN  >= 1.0 ? '#22c55e' : '#ef4444';
+      const wrC  = isNaN(wrN)  ? 'rgba(255,255,255,.5)' : wrN  >= 50  ? '#22c55e' : '#ef4444';
+      return `<div class="season-card">
+        <div class="season-name">${s.label || s.name || s.season || '?'}</div>
+        <div class="season-rank" style="color:${rc(s.rank)}">${s.rank || 'Unranked'}</div>
+        ${s.mmr ? `<div class="season-mmr">${s.mmr} RP</div>` : ''}
+        ${!isNaN(kdN) ? `<div class="season-stat" style="color:${kdC}">${kdN.toFixed(2)} K/D</div>` : ''}
+        ${!isNaN(wrN) ? `<div class="season-stat" style="color:${wrC}">${wrN.toFixed(1)}% WR</div>` : ''}
+        ${(s.wins != null && s.losses != null) ? `<div class="season-wl"><span style="color:#22c55e">${s.wins}W</span> <span style="color:rgba(255,255,255,.3)">/</span> <span style="color:#ef4444">${s.losses}L</span></div>` : ''}
+      </div>`;
+    }).join('');
+  } else {
+    seasSection.style.display = 'none';
+  }
+}
+
+// ── LIVE MATCH TAB ────────────────────────────────────────────────────────────
+const inputVals = {};
+function iv(idx) { return inputVals[idx] || ''; }
+
+async function lookupSlot(idx) {
+  const u = (iv(idx) || '').trim();
+  if (!u) return;
+  await window.tracker?.lookupPlayer({ username: u, platform: 'uplay', slotIndex: idx });
+}
+
+function buildCard(slot, idx, isEnemy) {
+  const card = document.createElement('div');
+  card.className = `card${isEnemy ? ' enemy' : ''}`;
+
+  if (!slot || slot.status === 'empty') {
+    const slotLabel = document.createElement('div');
+    slotLabel.style.cssText = 'font-size:9px;color:rgba(255,255,255,.2);margin-bottom:5px;font-weight:600;letter-spacing:1px';
+    slotLabel.textContent = `SLOT ${idx + 1}`;
+    card.appendChild(slotLabel);
+
+    const inp = document.createElement('input');
+    inp.className = 'card-inp';
+    inp.placeholder = 'Username...';
+    inp.value = iv(idx);
+    inp.addEventListener('input', e => { inputVals[idx] = e.target.value; });
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') lookupSlot(idx); });
+    card.appendChild(inp);
+
+    const go = document.createElement('button');
+    go.className = 'card-go';
+    go.textContent = 'Look up';
+    go.addEventListener('click', () => lookupSlot(idx));
+    card.appendChild(go);
+    return card;
+  }
+
+  if (slot.status === 'loading') {
+    card.innerHTML = `
+      <div class="sh" style="height:12px;width:80px;margin-bottom:4px"></div>
+      <div class="sh" style="height:10px;width:55px;margin-bottom:7px"></div>
+      <div style="display:flex;gap:6px">
+        <div class="sh" style="height:14px;width:28px"></div>
+        <div class="sh" style="height:14px;width:28px"></div>
+      </div>`;
+    return card;
+  }
+
+  const p      = slot.profile;
+  const isYou  = idx === 0;
+  const name   = slot.isAnonymous ? 'Anonymous' : (p?._displayName || p?.username || slot.username || 'Unknown');
+  const hidden = p && p.statsPrivate && !p.resolvedViaProfileId;
+
+  const youTag = isYou ? ' <span style="font-size:9px;color:var(--p2);font-weight:600;border:1px solid rgba(167,139,250,.3);border-radius:3px;padding:1px 5px">YOU</span>' : '';
+
+  card.innerHTML = `
+    <div class="cn${slot.isAnonymous?' anon':''}${isYou?' you':''}">${name}${youTag}</div>
+    ${!p
+      ? `<div style="font-size:11px;color:rgba(255,255,255,.28);font-style:italic;margin-bottom:5px">${slot.status==='failed'?'Not found':'—'}</div>
+         <button class="card-go" onclick="lookupSlot(${idx})">↺ Retry</button>`
+      : hidden
+        ? `<span class="pb">🔒 Stats Hidden</span>`
+        : `<div class="cr" style="color:${rc(p.rank)}">${p.rank||'Unranked'}${p.mmr?`<span style="font-size:9px;color:rgba(255,255,255,.28);margin-left:4px">${p.mmr}RP</span>`:''}</div>
+           <div class="cstats">
+             <div><div class="csv" style="color:${sc(p.kd)}">${p.kd??'—'}</div><div class="csl">K/D</div></div>
+             <div><div class="csv" style="color:${sc(p.winRate,50)}">${p.winRate!=null?p.winRate+'%':'—'}</div><div class="csl">WR</div></div>
+             <div><div class="csv" style="color:rgba(255,255,255,.4);font-size:12px">${p.level??'—'}</div><div class="csl">Lv</div></div>
+           </div>
+           ${p.detection?.verdict!=='clean'&&p.detection?.label?`<span class="cbadge" style="color:${p.detection.color};background:${p.detection.color}18;border:1px solid ${p.detection.color}44">${emo(p.detection.verdict)} ${p.detection.label}</span>`:''}
+           ${p.isInactive?`<span class="cbadge" style="color:#9ca3af;background:rgba(107,114,128,.12);border:1px solid rgba(107,114,128,.3)">⏸ Inactive</span>`:''}}
+           ${p.reputation?.flagged?`<span class="cbadge" style="color:#ef4444;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3)">🚩 ${p.reputation.reports}</span>`:''}`
+    }`;
+  return card;
+}
+
+function renderRoster(payload) {
+  const { yourTeam = [], enemyTeam = [] } = payload || {};
+  const hasData  = [...yourTeam, ...enemyTeam].some(s => s?.status !== 'empty');
+  const loadedN  = [...yourTeam, ...enemyTeam].filter(s => s?.status === 'loaded').length;
+  const totalN   = [...yourTeam, ...enemyTeam].filter(s => s?.status && s.status !== 'empty').length;
+  const dot      = document.getElementById('gdot');
+  const gs       = document.getElementById('gstatus');
+  const bn       = document.getElementById('banner');
+
+  if (hasData) {
+    dot.className = 'gdot on';
+    gs.textContent = 'Match live';
+    gs.style.color = '#ef4444';
+    bn.className = 'live';
+    bn.textContent = `🔴 Match — ${loadedN}/${totalN} players loaded`;
+    // Auto-switch to match tab when a live match starts
+    if (currentTab === 'home') switchTab('match');
+  } else {
+    dot.className = 'gdot';
+    gs.textContent = 'Waiting...';
+    gs.style.color = 'rgba(255,255,255,.45)';
+    bn.className = '';
+    bn.textContent = 'Waiting for a match. Enter enemy usernames in the roster, or let the web app auto-push them.';
+  }
+
+  const yt = document.getElementById('your-team');
+  const et = document.getElementById('enemy-team');
+  yt.innerHTML = '';
+  et.innerHTML = '';
+  for (let i = 0; i < 4; i++) yt.appendChild(buildCard(yourTeam[i] || null, i, false));
+  for (let i = 0; i < 5; i++) et.appendChild(buildCard(enemyTeam[i] || null, i + 5, true));
+}
+
+function doClear() { window.tracker?.clearRoster(); }
+
+// ── LOOKUP TAB ────────────────────────────────────────────────────────────────
+async function doLookup() {
+  const username = document.getElementById('lookup-inp').value.trim();
+  const platform = document.getElementById('lookup-plat').value;
+  if (!username) return;
+
+  const btn = document.getElementById('lookup-go');
+  btn.disabled = true;
+  btn.textContent = 'Searching…';
+
+  const result = document.getElementById('lookup-result');
+  result.innerHTML = `<div style="padding:20px;text-align:center;color:rgba(255,255,255,.3)">
+    <div class="home-loading-spinner" style="margin:0 auto 12px"></div>Loading…</div>`;
+
+  try {
+    const p = await window.tracker.lookupPlayer({ username, platform });
+    if (!p || p.error) {
+      result.innerHTML = `<div style="padding:20px;text-align:center;color:#ef4444">
+        ${p?.error || 'Player not found'}</div>`;
+    } else {
+      result.innerHTML = buildFullCard(p, platform);
+    }
+  } catch (e) {
+    result.innerHTML = `<div style="padding:20px;text-align:center;color:#ef4444">${e.message}</div>`;
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Search';
+}
+
+function buildFullCard(p, platform) {
+  const seasons = (p.seasonHistory || p.seasons || []).slice(0, 8);
+  return `
+  <div class="full-card fi">
+    <div class="full-card-head">
+      <div class="home-avatar" style="width:52px;height:52px;font-size:20px">${(p._displayName||p.username||'?').charAt(0).toUpperCase()}</div>
+      <div style="flex:1;min-width:0">
+        <div class="full-card-name">${p._displayName || p.username}</div>
+        <div class="full-card-rank" style="color:${rc(p.rank)}">${p.rank || 'Unranked'}${p.mmr?` <span style="font-size:11px;color:rgba(255,255,255,.3);font-weight:500">${p.mmr} RP</span>`:''}</div>
+        ${p.detection?.verdict&&p.detection.verdict!=='clean'&&p.detection.label
+          ? `<span class="home-detection" style="color:${p.detection.color};background:${p.detection.color}18;border:1px solid ${p.detection.color}44;margin-top:4px">${emo(p.detection.verdict)} ${p.detection.label}</span>` : ''}
+      </div>
+    </div>
+    <div class="full-card-body">
+      ${[
+        { val: p.kd     != null ? p.kd   : '—', lbl:'K/D',       color:sc(p.kd) },
+        { val: p.winRate!= null ? p.winRate+'%':'—', lbl:'Win Rate', color:sc(p.winRate,50) },
+        { val: p.level  != null ? p.level : '—', lbl:'Level',     color:'rgba(255,255,255,.85)' },
+        { val: p.headshotRate!=null?p.headshotRate+'%':'—', lbl:'HS%', color:sc(p.headshotRate,40) },
+        { val: p.kills  != null ? fmt(p.kills)  : '—', lbl:'Kills',   color:'rgba(255,255,255,.8)' },
+        { val: p.deaths != null ? fmt(p.deaths) : '—', lbl:'Deaths',  color:'rgba(255,255,255,.5)' },
+        { val: p.wins   != null ? fmt(p.wins)   : '—', lbl:'Wins',    color:'#22c55e' },
+        { val: p.timePlayed!=null?p.timePlayed  :'—',  lbl:'Played',  color:'rgba(255,255,255,.7)' },
+      ].map(s=>`<div class="stat-card"><div class="stat-val" style="color:${s.color}">${s.val}</div><div class="stat-lbl">${s.lbl}</div></div>`).join('')}
+    </div>
+    ${seasons.length>0?`
+    <div style="padding:0 20px 16px">
+      <div class="home-section-title">Season History</div>
+      <div class="season-grid">${seasons.map(s=>{
+        const kdN=parseFloat(s.kd),wrN=parseFloat(s.winRate);
+        const kdC=isNaN(kdN)?'rgba(255,255,255,.5)':kdN>=1.0?'#22c55e':'#ef4444';
+        const wrC=isNaN(wrN)?'rgba(255,255,255,.5)':wrN>=50?'#22c55e':'#ef4444';
+        return '<div class="season-card">'
+          +'<div class="season-name">'+(s.label||s.name||s.season||'?')+'</div>'
+          +'<div class="season-rank" style="color:'+rc(s.rank)+'">'+(s.rank||'Unranked')+'</div>'
+          +(s.mmr?'<div class="season-mmr">'+s.mmr+' RP</div>':'')
+          +(!isNaN(kdN)?'<div class="season-stat" style="color:'+kdC+'">'+kdN.toFixed(2)+' K/D</div>':'')
+          +(!isNaN(wrN)?'<div class="season-stat" style="color:'+wrC+'">'+wrN.toFixed(1)+'% WR</div>':'')
+          +((s.wins!=null&&s.losses!=null)?'<div class="season-wl"><span style="color:#22c55e">'+s.wins+'W</span> <span style="color:rgba(255,255,255,.3)">/</span> <span style="color:#ef4444">'+s.losses+'L</span></div>':'')
+          +'</div>';
+      }).join('')}
+      </div>
+    </div>`:''}
+  </div>`;
+}
+
+// ── Help / Discord ───────────────────────────────────────────────────────────
+function openDiscord() {
+  // Uses shell.openExternal via IPC — opens in default browser or Discord app if installed
+  if (window.tracker && window.tracker.openDiscord) {
+    window.tracker.openDiscord();
+  } else {
+    // Dev fallback
+    window.open('https://discord.gg/vsybH2fcXs', '_blank');
+  }
+}
+
+// ── Bootstrap ─────────────────────────────────────────────────────────────────
+if (window.tracker) {
+  initAuth();
+  window.tracker.onAuthState(state => {
+    if (state.loggedIn && state.user) {
+      // Auth state update (e.g. profile loaded after initial login)
+      if (document.getElementById('app').classList.contains('hidden')) {
+        showApp(state.user);
+      } else if (state.user.profile) {
+        renderHomeStats(state.user.username, state.user.platform, state.user.profile);
+      }
+    } else if (!state.loggedIn) {
+      document.getElementById('app').classList.add('hidden');
+      document.getElementById('login-screen').classList.remove('hidden');
+      document.getElementById('autofill-chip').classList.remove('show');
+      currentProfile = null;
+    }
+  });
+  window.tracker.onRosterUpdate(renderRoster);
+  window.tracker.onRosterClear(() => renderRoster({ yourTeam:[], enemyTeam:[] }));
+  window.tracker.onMatchEnd?.(() => {
+    document.getElementById('banner').className = 'done';
+    document.getElementById('banner').textContent = '✅ Match over';
+    document.getElementById('gdot').className = 'gdot';
+    document.getElementById('gstatus').textContent = 'Waiting...';
+    document.getElementById('gstatus').style.color = 'rgba(255,255,255,.45)';
+  });
+} else {
+  showApp({ username: 'DevUser', platform: 'uplay' });
+  try {
+    const ws = new WebSocket('ws://127.0.0.1:7373');
+    ws.onmessage = e => {
+      const msg = JSON.parse(e.data);
+      if (msg.type === 'roster-update') renderRoster(msg.payload);
+      if (msg.type === 'roster-clear')  renderRoster({ yourTeam:[], enemyTeam:[] });
+    };
+  } catch (_) {}
+}
+</script>
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+let loginBusy = false;
+
+async function initAuth() {
+  if (!window.tracker) return;
+  const state = await window.tracker.authGet();
+  if (state.loggedIn && state.user) showApp(state.user);
+}
+
+async function doLogin() {
+  if (loginBusy) return;
+  const save = document.getElementById('chk-save')?.checked !== false;
+  loginBusy = true;
+  const btn = document.getElementById('login-btn');
+  btn.disabled = true;
+  btn.textContent = 'Opening Ubisoft login…';
+  hideErr();
+
+  const result = await window.tracker.authLogin({ save });
+  loginBusy = false;
+  btn.disabled = false;
+  btn.textContent = 'Sign in with Ubisoft Connect';
+
+  if (result.success) {
+    showApp(result.user);
+  } else {
+    showErr(result.error || 'Sign-in failed. Please try again.');
+  }
+}
+
+// ── Step 2: submit 2FA code ───────────────────────────────────────────────────
+async function doSubmit2FA() {
+  if (loginBusy) return;
+  const code = Array.from({ length: 6 }, (_, i) =>
+    (document.getElementById(`tfa-${i}`)?.value || '').trim()
+  ).join('');
+
+  if (code.length < 6) { showErr('Enter all 6 digits of your 2FA code.'); return; }
+
+  loginBusy = true;
+  const btn = document.getElementById('tfa-btn');
+  btn.disabled = true;
+  btn.textContent = 'Verifying…';
+  hideErr();
+
+  const result = await window.tracker.authLogin({
+    email:    pendingTfaEmail,
+    password: pendingTfaPassword,
+    platform: pendingTfaPlatform,
+    save:     pendingTfaSave,
+    tfaCode:  code,
+  });
+
+  loginBusy = false;
+  btn.disabled = false;
+  btn.textContent = 'Verify & Sign In';
+
+  if (result.success) {
+    showApp(result.user);
+  } else {
+    showErr(result.error || 'Invalid 2FA code. Please try again.');
+    for (let i = 0; i < 6; i++) {
+      const d = document.getElementById(`tfa-${i}`);
+      d.value = '';
+      d.classList.remove('filled');
+    }
+    document.getElementById('tfa-0')?.focus();
+  }
+}
+
+// ── Panel switchers ───────────────────────────────────────────────────────────
+function showTfaPanel() {
+  document.getElementById('creds-panel').style.display = 'none';
+  document.getElementById('tfa-panel').classList.add('show');
+  hideErr();
+  // Focus first digit after short delay
+  setTimeout(() => document.getElementById('tfa-0')?.focus(), 80);
+}
+
+function showCredsPanel() {
+  document.getElementById('tfa-panel').classList.remove('show');
+  document.getElementById('creds-panel').style.display = '';
+  hideErr();
+  pendingTfaUsername = null;
+  pendingTfaPlatform = null;
+  pendingTfaSave     = false;
+  for (let i = 0; i < 6; i++) {
+    const d = document.getElementById(`tfa-${i}`);
+    if (d) { d.value = ''; d.classList.remove('filled'); }
+  }
+}
+
+// ── 2FA digit box keyboard behaviour ─────────────────────────────────────────
+document.querySelectorAll('.tfa-digit').forEach((inp, i, all) => {
+  inp.addEventListener('input', e => {
+    // Allow only digits
+    inp.value = inp.value.replace(/\D/g, '').slice(-1);
+    inp.classList.toggle('filled', inp.value !== '');
+    // Auto-advance
+    if (inp.value && i < all.length - 1) all[i + 1].focus();
+    // Auto-submit when all filled
+    if (Array.from(all).every(d => d.value !== '')) doSubmit2FA();
+  });
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Backspace' && !inp.value && i > 0) all[i - 1].focus();
+    if (e.key === 'Enter') doSubmit2FA();
+  });
+  inp.addEventListener('paste', e => {
+    e.preventDefault();
+    const paste = (e.clipboardData.getData('text') || '').replace(/\D/g, '').slice(0, 6);
+    paste.split('').forEach((ch, j) => {
+      if (all[i + j]) { all[i + j].value = ch; all[i + j].classList.add('filled'); }
+    });
+    const next = all[Math.min(i + paste.length, all.length - 1)];
+    next?.focus();
+    if (paste.length === 6) doSubmit2FA();
+  });
+});
+
+function showApp(user) {
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  showCredsPanel(); // reset login panels for next time
+
+  const platLabels = { uplay:'PC', psn:'PSN', xbl:'XBL' };
+  document.getElementById('chip-name').textContent = user.username;
+  document.getElementById('chip-plat').textContent = platLabels[user.platform] || user.platform.toUpperCase();
+
+  window.tracker.getRoster().then(renderRoster).catch(() => {});
+}
+
+async function doLogout() {
+  await window.tracker.authLogout();
+  document.getElementById('app').classList.add('hidden');
+  document.getElementById('login-screen').classList.remove('hidden');
+  document.getElementById('autofill-chip').classList.remove('show');
+  // cleared
+  hideErr();
+}
+
+function showErr(msg) {
+  const el = document.getElementById('login-err');
+  el.textContent = msg;
+  el.classList.add('show');
+}
+function hideErr() {
+  document.getElementById('login-err').classList.remove('show');
+}
+
+// Enter key on username triggers login
+  if (e.key === 'Enter') doLogin();
+});
+
+// ── Roster ────────────────────────────────────────────────────────────────────
+const inputVals = {};
+function iv(idx) { return inputVals[idx] || ''; }
+
+async function lookupSlot(idx) {
+  const u = (iv(idx) || '').trim();
+  if (!u) return;
+  await window.tracker?.lookupPlayer({ username: u, platform: 'uplay', slotIndex: idx });
+}
+
+function buildCard(slot, idx, isEnemy) {
+  const card = document.createElement('div');
+  card.className = `card${isEnemy ? ' enemy' : ''}`;
+
+  if (!slot || slot.status === 'empty') {
+    const slotLabel = document.createElement('div');
+    slotLabel.style.cssText = 'font-size:9px;color:rgba(255,255,255,.2);margin-bottom:5px;font-weight:600;letter-spacing:1px';
+    slotLabel.textContent = `SLOT ${idx + 1}`;
+    card.appendChild(slotLabel);
+
+    const inp = document.createElement('input');
+    inp.className = 'card-inp';
+    inp.placeholder = 'Username...';
+    inp.value = iv(idx);
+    inp.addEventListener('input', e => { inputVals[idx] = e.target.value; });
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') lookupSlot(idx); });
+    card.appendChild(inp);
+
+    const go = document.createElement('button');
+    go.className = 'card-go';
+    go.textContent = 'Look up';
+    go.addEventListener('click', () => lookupSlot(idx));
+    card.appendChild(go);
+    return card;
+  }
+
+  if (slot.status === 'loading') {
+    card.innerHTML = `
+      <div class="sh" style="height:12px;width:80px;margin-bottom:4px"></div>
+      <div class="sh" style="height:10px;width:55px;margin-bottom:7px"></div>
+      <div style="display:flex;gap:6px">
+        <div class="sh" style="height:14px;width:28px"></div>
+        <div class="sh" style="height:14px;width:28px"></div>
+      </div>`;
+    return card;
+  }
+
+  const p      = slot.profile;
+  const isYou  = idx === 0;
+  const name   = slot.isAnonymous ? 'Anonymous' : (p?._displayName || p?.username || slot.username || 'Unknown');
+  const hidden = p && p.statsPrivate && !p.resolvedViaProfileId;
+
+  const youTag = isYou ? ' <span style="font-size:9px;color:var(--p2);font-weight:600;border:1px solid rgba(167,139,250,.3);border-radius:3px;padding:1px 5px">YOU</span>' : '';
+
+  card.innerHTML = `
+    <div class="cn${slot.isAnonymous?' anon':''}${isYou?' you':''}">${name}${youTag}</div>
+    ${!p
+      ? `<div style="font-size:11px;color:rgba(255,255,255,.28);font-style:italic;margin-bottom:5px">${slot.status==='failed'?'Not found':'—'}</div>
+         <button class="card-go" onclick="lookupSlot(${idx})">↺ Retry</button>`
+      : hidden
+        ? `<span class="pb">🔒 Stats Hidden</span>`
+        : `<div class="cr" style="color:${rc(p.rank)}">${p.rank||'Unranked'}${p.mmr?`<span style="font-size:9px;color:rgba(255,255,255,.28);margin-left:4px">${p.mmr}RP</span>`:''}</div>
+           <div class="cstats">
+             <div><div class="csv" style="color:${sc(p.kd)}">${p.kd??'—'}</div><div class="csl">K/D</div></div>
+             <div><div class="csv" style="color:${sc(p.winRate,50)}">${p.winRate!=null?p.winRate+'%':'—'}</div><div class="csl">WR</div></div>
+             <div><div class="csv" style="color:rgba(255,255,255,.4);font-size:12px">${p.level??'—'}</div><div class="csl">Lv</div></div>
+           </div>
+           ${p.detection?.verdict!=='clean'&&p.detection?.label?`<span class="cbadge" style="color:${p.detection.color};background:${p.detection.color}18;border:1px solid ${p.detection.color}44">${emo(p.detection.verdict)} ${p.detection.label}</span>`:''}
+           ${p.isInactive?`<span class="cbadge" style="color:#9ca3af;background:rgba(107,114,128,.12);border:1px solid rgba(107,114,128,.3)">⏸ Inactive</span>`:''}}
+           ${p.reputation?.flagged?`<span class="cbadge" style="color:#ef4444;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3)">🚩 ${p.reputation.reports}</span>`:''}`
+    }`;
+  return card;
+}
+
+function renderRoster(payload) {
+  const { yourTeam = [], enemyTeam = [] } = payload || {};
+  const hasData  = [...yourTeam, ...enemyTeam].some(s => s?.status !== 'empty');
+  const loadedN  = [...yourTeam, ...enemyTeam].filter(s => s?.status === 'loaded').length;
+  const totalN   = [...yourTeam, ...enemyTeam].filter(s => s?.status && s.status !== 'empty').length;
+  const dot      = document.getElementById('gdot');
+  const gs       = document.getElementById('gstatus');
+  const bn       = document.getElementById('banner');
+
+  if (hasData) {
+    dot.className = 'gdot on';
+    gs.textContent = 'Match live';
+    gs.style.color = '#ef4444';
+    bn.className = 'live';
+    bn.textContent = `🔴 Match — ${loadedN}/${totalN} players loaded`;
+  } else {
+    dot.className = 'gdot';
+    gs.textContent = 'Waiting...';
+    gs.style.color = 'rgba(255,255,255,.45)';
+    bn.className = '';
+    bn.textContent = 'Waiting for a match. Enter enemy usernames in the roster, or let the web app auto-push them.';
+  }
+
+  const yt = document.getElementById('your-team');
+  const et = document.getElementById('enemy-team');
+  yt.innerHTML = '';
+  et.innerHTML = '';
+  for (let i = 0; i < 4; i++) yt.appendChild(buildCard(yourTeam[i] || null, i, false));
+  for (let i = 0; i < 5; i++) et.appendChild(buildCard(enemyTeam[i] || null, i + 5, true));
+}
+
+function doClear() { window.tracker?.clearRoster(); }
+
+// ── Help / Discord ───────────────────────────────────────────────────────────
+function openDiscord() {
+  // Uses shell.openExternal via IPC — opens in default browser or Discord app if installed
+  if (window.tracker && window.tracker.openDiscord) {
+    window.tracker.openDiscord();
+  } else {
+    // Dev fallback
+    window.open('https://discord.gg/vsybH2fcXs', '_blank');
+  }
+}
+
+// ── Bootstrap ─────────────────────────────────────────────────────────────────
+if (window.tracker) {
+  initAuth();
+  window.tracker.onAuthState(state => {
+    if (!state.loggedIn) {
+      document.getElementById('app').classList.add('hidden');
+      document.getElementById('login-screen').classList.remove('hidden');
+      document.getElementById('autofill-chip').classList.remove('show');
+      // cleared
+    }
+  });
+  window.tracker.onRosterUpdate(renderRoster);
+  window.tracker.onRosterClear(() => renderRoster({ yourTeam:[], enemyTeam:[] }));
+  window.tracker.onMatchEnd(() => {
+    document.getElementById('banner').className = 'done';
+    document.getElementById('banner').textContent = '✅ Match over';
+    document.getElementById('gdot').className = 'gdot';
+    document.getElementById('gstatus').textContent = 'Waiting...';
+    document.getElementById('gstatus').style.color = 'rgba(255,255,255,.45)';
+  });
+} else {
+  // Browser dev mode fallback
+  showApp({ username: 'DevUser', platform: 'uplay' });
+  try {
+    const ws = new WebSocket('ws://127.0.0.1:7373');
+    ws.onmessage = e => {
+      const msg = JSON.parse(e.data);
+      if (msg.type === 'roster-update') renderRoster(msg.payload);
+      if (msg.type === 'roster-clear')  renderRoster({ yourTeam:[], enemyTeam:[] });
+    };
+  } catch (_) {}
+}
+</script>
+</body>
+</html>
