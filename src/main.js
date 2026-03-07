@@ -802,10 +802,21 @@ function fetchJSONGet(url, headers = {}) {
     const mod = url.startsWith("https") ? https : http;
     const req = mod.get(url, { headers, timeout: 15000 }, res => {
       let b = ""; res.on("data", d => b += d);
-      res.on("end", () => { try { resolve(JSON.parse(b)); } catch (_) { resolve(null); } });
+      res.on("end", () => {
+        try {
+          const parsed = JSON.parse(b);
+          resolve(parsed);
+        } catch (_) {
+          // Non-JSON response (Vercel HTML error page, 500, 504 etc.)
+          const status = res.statusCode || 0;
+          if (status >= 500) reject(new Error(`Server error (${status}) — try again in a moment`));
+          else if (status === 429) reject(new Error("Rate limited — please wait a moment"));
+          else reject(new Error(`Unexpected response (${status}) — try again`));
+        }
+      });
     });
     req.on("error", reject);
-    req.on("timeout", () => { req.destroy(); reject(new Error("Timeout")); });
+    req.on("timeout", () => { req.destroy(); reject(new Error("Request timed out — try again")); });
   });
 }
 
@@ -820,7 +831,13 @@ function fetchJSONPost(url, headers = {}, body = "") {
     };
     const req = https.request(opts, res => {
       let b = ""; res.on("data", d => b += d);
-      res.on("end", () => { try { resolve(JSON.parse(b)); } catch (_) { resolve(null); } });
+      res.on("end", () => {
+        try { resolve(JSON.parse(b)); }
+        catch (_) {
+          const status = res.statusCode || 0;
+          reject(new Error(`Server error (${status}) — try again in a moment`));
+        }
+      });
     });
     req.on("error", reject);
     req.on("timeout", () => { req.destroy(); reject(new Error("Timeout")); });
@@ -831,7 +848,8 @@ function fetchJSONPost(url, headers = {}, body = "") {
 async function fetchProfile(username, platform = "uplay", bustCache = false, profileIdHint = null) {
   let url = `${API_BASE}/player?username=${encodeURIComponent(username)}&platform=${platform}` + (bustCache ? "&bust=1" : "");
   if (profileIdHint) url += "&profileId=" + encodeURIComponent(profileIdHint);
-  const data = await fetchJSONGet(url);
+  const data = await fetchJSONGet(url); // throws on non-JSON / server error
+  if (data?.error) throw new Error(data.error);
   if (!data?.username) return null;
   // Auto-bust if profile came back with no KD and no season history
   if (!bustCache && data.kd == null && (!data.seasonHistory || data.seasonHistory.length === 0)) {
