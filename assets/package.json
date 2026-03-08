@@ -5,7 +5,7 @@
   "description": "R6 Siege stat overlay \u2014 live match detection, auto roster fill, anti-cheat safe",
   "main": "src/main.js",
   "scripts": {
-    "start": "electron . --trace-warnings",
+    "start": "electron .",
     "dev": "electron . --inspect",
     "build": "electron-builder --win --publish=never",
     "release": "electron-builder --win --publish=always"

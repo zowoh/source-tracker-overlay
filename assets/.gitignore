@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+out/
+build/
+
+# Electron packager artifacts
+*.exe
+*.dmg
+*.AppImage
+*.snap
+*.deb
+*.rpm
+*.zip
+*.tar.gz
+
+# Encrypted credentials (user-specific, never commit)
+st_creds.enc
+*.enc
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Electron builder cache
+.cache/

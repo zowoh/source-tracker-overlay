@@ -25,7 +25,7 @@
 const {
   app, BrowserWindow, globalShortcut,
   Tray, Menu, ipcMain, nativeImage,
-  safeStorage, screen, session, shell, net,
+  safeStorage, screen, session, shell,
 } = require("electron");
 const path  = require("path");
 const fs    = require("fs");
@@ -165,13 +165,6 @@ function createDesktopWindow() {
   });
   desktopWin.loadFile(path.join(__dirname, "renderer", "desktop.html"));
   desktopWin.on("close", e => { e.preventDefault(); desktopWin.hide(); });
-  // Block any unexpected navigations away from the local HTML file
-  desktopWin.webContents.on("will-navigate", (e, url) => {
-    if (!url.startsWith("file://") || url.includes("undefined")) {
-      console.warn("[Nav] Blocked navigation to:", url.slice(0, 100));
-      e.preventDefault();
-    }
-  });
   // Auto-open DevTools when running locally (not packaged)
   if (!app.isPackaged) desktopWin.webContents.openDevTools({ mode: "detach" });
 }
@@ -325,63 +318,33 @@ function endMatch(src) {
 
 // ── R6S GameLog.txt watcher ───────────────────────────────────────────────────
 function findLogFile(profileId) {
-  const validGuid = profileId && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(profileId);
-  const LOG_NAMES = ["GameLog.txt", "Log.txt"];
-
-  // Build list of candidate base dirs — R6 can live under regular or OneDrive Documents
-  const candidates = new Set();
-  candidates.add(R6_LOG_BASE);
-
-  // USERPROFILE\OneDrive\Documents (OneDrive-redirected Documents)
-  const up = process.env.USERPROFILE || os.homedir();
-  for (const sub of ["OneDrive\\Documents", "OneDrive - Personal\\Documents", "OneDrive\\My Documents"]) {
-    candidates.add(path.join(up, sub, "My Games", "Rainbow Six - Siege"));
+  // Primary: known profile folder
+  for (const name of ["GameLog.txt", "Log.txt"]) {
+    if (profileId) {
+      const p = path.join(R6_LOG_BASE, profileId, name);
+      if (fs.existsSync(p)) return p;
+    }
   }
-  // Also check env var DOCUMENTS if set
-  if (process.env.DOCUMENTS) {
-    candidates.add(path.join(process.env.DOCUMENTS, "My Games", "Rainbow Six - Siege"));
-  }
-  // Read actual Documents path from registry-style env (some systems expose it)
+  // Fallback: scan all subfolders (GUID-shaped folder names)
   try {
-    const regDocs = require("child_process")
-      .execSync('reg query "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders" /v Personal 2>nul', { encoding: "utf8", timeout: 2000 })
-      .match(/Personal\s+REG_SZ\s+(.+)/)?.[1]?.trim();
-    if (regDocs) candidates.add(path.join(regDocs, "My Games", "Rainbow Six - Siege"));
-  } catch (_) {}
-
-  for (const base of candidates) {
-    // Primary: known profile folder
-    if (validGuid) {
-      for (const name of LOG_NAMES) {
-        const p = path.join(base, profileId, name);
-        if (fs.existsSync(p)) { console.log("[Log] Found at:", p); return p; }
+    const entries = fs.readdirSync(R6_LOG_BASE, { withFileTypes: true });
+    for (const e of entries) {
+      if (!e.isDirectory()) continue;
+      for (const name of ["GameLog.txt", "Log.txt"]) {
+        const p = path.join(R6_LOG_BASE, e.name, name);
+        if (fs.existsSync(p)) return p;
       }
     }
-    // Fallback: scan all GUID subfolders in this base
-    try {
-      const entries = fs.readdirSync(base, { withFileTypes: true });
-      for (const e of entries) {
-        if (!e.isDirectory()) continue;
-        for (const name of LOG_NAMES) {
-          const p = path.join(base, e.name, name);
-          if (fs.existsSync(p)) { console.log("[Log] Found at:", p); return p; }
-        }
-      }
-    } catch (_) {}
-  }
-
-  console.warn("[Log] Searched bases:", [...candidates].join(", "));
+  } catch (_) {}
   return null;
 }
 
 function startLogWatch(profileId) {
   stopLogWatch();
-  // Don't attempt log watch with invalid profileId
-  const validGuid = profileId && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(profileId);
-  logFilePath = findLogFile(validGuid ? profileId : null);
+  logFilePath = findLogFile(profileId);
 
   if (!logFilePath) {
-    if (validGuid) console.warn("[Log] Log file not found — profileId:", profileId);
+    console.warn("[Log] Log file not found — profileId:", profileId);
     sendToOverlay("log-status", { watching: false, reason: "R6S log not found. Launch the game at least once." });
     sendToDesktop("log-status", { watching: false, reason: "R6S log not found." });
     return;
@@ -583,17 +546,15 @@ async function trySilentCookieLogin() {
   }
 }
 
-function openUbiAuthWindow(silent = false) {
+function openUbiAuthWindow() {
   return new Promise((resolve, reject) => {
     if (ubiAuthWin && !ubiAuthWin.isDestroyed()) {
-      if (!silent) ubiAuthWin.show();
       ubiAuthWin.focus();
       return;
     }
 
     ubiAuthResolve = resolve;
     ubiAuthReject  = reject;
-    _sessionFetchInFlight = false;
 
     // Dedicated session so cookies don't bleed into the main app session
     const partition = "persist:ubi-login";
@@ -619,7 +580,6 @@ function openUbiAuthWindow(silent = false) {
       title:   "Sign in with Ubisoft",
       center:  true,
       resizable: false,
-      show:    !silent,              // hidden in silent mode — shown only if login page loads
       icon: fs.existsSync(ICON_PATH) ? ICON_PATH : undefined,
       webPreferences: {
         nodeIntegration:  false,
@@ -677,11 +637,6 @@ function openUbiAuthWindow(silent = false) {
                 nameOnPlatform: json.nameOnPlatform || json.username || null,
               });
             }
-            // /v3/users/me means user is authenticated — use their userId to get a session ticket
-            if (json?.userId && url.includes("/v3/users/me") && !url.includes("/family")) {
-              console.log("[Auth] User authenticated, userId:", json.userId, "— fetching session ticket via CDP");
-              triggerSessionFetch(json.userId);
-            }
           } catch (e) { console.log("[Auth CDP] Error getting body:", e.message); }
         })();
       }
@@ -714,47 +669,20 @@ function openUbiAuthWindow(silent = false) {
     // Broad match: any navigation on ubisoft.com triggers a cookie check.
     // This catches the already-logged-in case where Ubisoft redirects directly
     // to a dashboard/home page without going through /login-success.
-    // Pages that are part of the login form — user is NOT yet authenticated
-    const isStillLoggingIn = (url) => (
-      url.includes("/login")    ||
-      url.includes("/register") ||
-      url.includes("/two-factor") ||
-      url.includes("/2fa")      ||
-      url.includes("/mfa")      ||
-      url.includes("/verify")   ||
-      url.includes("/challenge")
-    );
-
-    // If the window is hidden (silent mode) and lands on a login page, show it — user needs to interact
-    const showIfNeeded = () => {
-      if (silent && ubiAuthWin && !ubiAuthWin.isDestroyed() && !ubiAuthWin.isVisible()) {
-        console.log("[Auth] Login page detected in silent mode — showing window");
-        ubiAuthWin.show();
-        ubiAuthWin.focus();
-        silent = false; // only show once
-      }
-    };
-
     ubiAuthWin.webContents.on("did-navigate", async (_, url) => {
       if (!url.includes("ubisoft.com")) return;
       console.log("[Auth] did-navigate:", url);
-      if (isStillLoggingIn(url)) {
-        showIfNeeded();
-        checkCookies();
-      }
-      // Non-login page = possibly already authenticated; Runtime.evaluate in CDP will handle it
-    });
-    ubiAuthWin.webContents.on("did-navigate-in-page", (_, url) => {
-      if (!url.includes("ubisoft.com")) return;
-      console.log("[Auth] in-page navigate:", url);
-      if (isStillLoggingIn(url)) showIfNeeded();
+      // Always check cookies on every navigation — the CDP intercept is primary,
+      // cookie check is the fallback for when the ticket lands after navigation
       checkCookies();
     });
-    ubiAuthWin.webContents.on("did-finish-load", async () => {
+    ubiAuthWin.webContents.on("did-navigate-in-page", (_, url) => {
+      if (url.includes("ubisoft.com")) { console.log("[Auth] in-page navigate:", url); checkCookies(); }
+    });
+    ubiAuthWin.webContents.on("did-finish-load", () => {
       const url = ubiAuthWin?.webContents.getURL() || "";
       if (!url.includes("ubisoft.com")) return;
       console.log("[Auth] did-finish-load:", url);
-      if (isStillLoggingIn(url)) showIfNeeded();
       checkCookies();
     });
 
@@ -776,60 +704,41 @@ function openUbiAuthWindow(silent = false) {
   });
 }
 
-// Called when CDP confirms user is authenticated via /v3/users/me
-// Uses CDP Runtime.evaluate to run fetch() inside the page — bypasses all CSP/cookie issues
-let _sessionFetchInFlight = false;
-async function triggerSessionFetch(userId) {
-  if (_sessionFetchInFlight) return;
-  if (!ubiAuthWin || ubiAuthWin.isDestroyed()) return;
-  if (!ubiAuthResolve) return; // already resolved
-  _sessionFetchInFlight = true;
-
-  // Show overlay
-  ubiAuthWin.webContents.executeJavaScript(`
-    (function() {
-      if (document.getElementById('__st_overlay')) return;
-      const o = document.createElement('div');
-      o.id = '__st_overlay';
-      o.style.cssText = 'position:fixed;inset:0;background:#000009;z-index:999999;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:sans-serif;color:#fff;gap:16px';
-      o.innerHTML = '<svg width="48" height="48" viewBox="0 0 100 100" fill="none"><path d="M50 6 L88 22 L88 52 Q88 76 50 94 Q12 76 12 52 L12 22 Z" fill="#5D3FD3"/><text x="50" y="62" text-anchor="middle" font-size="28" font-weight="800" fill="white">ST</text></svg><div style="font-size:15px;font-weight:600;color:rgba(255,255,255,.9)">Signing you in…</div><div style="width:32px;height:32px;border:3px solid rgba(93,63,211,.3);border-top-color:#5D3FD3;border-radius:50%;animation:spin 0.8s linear infinite"></div><style>@keyframes spin{to{transform:rotate(360deg)}}</style>';
-      document.body.appendChild(o);
-    })()
-  `).catch(() => {});
-
+async function exchangeCookieForTicket(ubiSess) {
   try {
-    // Use CDP Runtime.evaluate to run fetch inside the page context
-    // This means cookies are sent automatically by the browser — no manual forwarding needed
-    const evalResult = await ubiAuthWin.webContents.debugger.sendCommand(
-      "Runtime.evaluate",
+    // Show a "signing you in" overlay immediately so user doesn't see Ubisoft dashboard
+    if (ubiAuthWin && !ubiAuthWin.isDestroyed()) {
+      ubiAuthWin.webContents.executeJavaScript(`
+        (function() {
+          if (document.getElementById('__st_overlay')) return;
+          const o = document.createElement('div');
+          o.id = '__st_overlay';
+          o.style.cssText = 'position:fixed;inset:0;background:#000009;z-index:999999;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:sans-serif;color:#fff;gap:16px';
+          o.innerHTML = '<svg width="48" height="48" viewBox="0 0 100 100" fill="none"><path d="M50 6 L88 22 L88 52 Q88 76 50 94 Q12 76 12 52 L12 22 Z" fill="#5D3FD3"/><text x="50" y="62" text-anchor="middle" font-size="28" font-weight="800" fill="white">ST</text></svg><div style="font-size:15px;font-weight:600;color:rgba(255,255,255,.9)">Signing you in…</div><div style="width:32px;height:32px;border:3px solid rgba(93,63,211,.3);border-top-color:#5D3FD3;border-radius:50%;animation:spin 0.8s linear infinite"></div><style>@keyframes spin{to{transform:rotate(360deg)}}</style>';
+          document.body.appendChild(o);
+        })()
+      `).catch(() => {});
+    }
+
+    const cookies  = await ubiSess.cookies.get({ domain: ".ubisoft.com" });
+    const cookieStr = cookies.map(c => `${c.name}=${c.value}`).join("; ");
+
+    const data = await fetchJSONPostSoft(
+      `${UBI_BASE}/v3/profiles/sessions`,
       {
-        expression: `
-          fetch('https://public-ubiservices.ubi.com/v3/profiles/sessions', {
-            method: 'POST',
-            credentials: 'include',
-            headers: {
-              'Content-Type': 'application/json',
-              'Ubi-AppId': '3587dcbb-7f81-457c-9781-0e3f29f6f56a',
-              'Ubi-RequestedPlatformType': 'uplay',
-            },
-            body: JSON.stringify({ rememberMe: true })
-          }).then(r => r.json()).then(d => JSON.stringify(d)).catch(e => JSON.stringify({ _error: e.message }))
-        `,
-        awaitPromise: true,
-        returnByValue: true,
-      }
+        "Content-Type":  "application/json",
+        "Ubi-AppId":     UBI_APPID,
+        "Cookie":        cookieStr,
+        "User-Agent":    CHROME_UA,
+        "Origin":        "https://account.ubisoft.com",
+        "Referer":       "https://account.ubisoft.com/",
+      },
+      JSON.stringify({ rememberMe: false })
     );
 
-    const raw = evalResult?.result?.value;
-    console.log("[Auth] Runtime.evaluate raw result:", raw?.slice?.(0, 200));
-    if (!raw) { _sessionFetchInFlight = false; return; }
-
-    let data;
-    try { data = JSON.parse(raw); } catch { _sessionFetchInFlight = false; return; }
-
-    console.log("[Auth] Session fetch keys:", Object.keys(data).join(","));
+    console.log("[Auth] exchangeCookieForTicket response keys:", data ? Object.keys(data).join(",") : "null");
     if (data?.ticket) {
-      console.log("[Auth] ✓ Got ticket via Runtime.evaluate");
+      console.log("[Auth] ✓ Cookie exchange got ticket");
       finishUbiAuth({
         ticket:         data.ticket,
         sessionId:      data.sessionId      || "",
@@ -839,64 +748,9 @@ async function triggerSessionFetch(userId) {
         nameOnPlatform: data.nameOnPlatform || data.username || null,
       });
     } else {
-      console.log("[Auth] No ticket — errorCode:", data?.errorCode, data?.message, data?._error);
-      _sessionFetchInFlight = false;
+      console.log("[Auth] Cookie exchange — no ticket yet, errorCode:", data?.errorCode, data?.message);
     }
-  } catch (e) {
-    console.log("[Auth] triggerSessionFetch error:", e.message);
-    _sessionFetchInFlight = false;
-  }
-}
-
-async function exchangeCookieForTicket(ubiSess) {
-  if (!ubiAuthWin || ubiAuthWin.isDestroyed()) return;
-
-  // Show overlay
-  ubiAuthWin.webContents.executeJavaScript(`
-    (function() {
-      if (document.getElementById('__st_overlay')) return;
-      const o = document.createElement('div');
-      o.id = '__st_overlay';
-      o.style.cssText = 'position:fixed;inset:0;background:#000009;z-index:999999;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:sans-serif;color:#fff;gap:16px';
-      o.innerHTML = '<svg width="48" height="48" viewBox="0 0 100 100" fill="none"><path d="M50 6 L88 22 L88 52 Q88 76 50 94 Q12 76 12 52 L12 22 Z" fill="#5D3FD3"/><text x="50" y="62" text-anchor="middle" font-size="28" font-weight="800" fill="white">ST</text></svg><div style="font-size:15px;font-weight:600;color:rgba(255,255,255,.9)">Signing you in…</div><div style="width:32px;height:32px;border:3px solid rgba(93,63,211,.3);border-top-color:#5D3FD3;border-radius:50%;animation:spin 0.8s linear infinite"></div><style>@keyframes spin{to{transform:rotate(360deg)}}</style>';
-      document.body.appendChild(o);
-    })()
-  `).catch(() => {});
-
-  // Execute the session POST from INSIDE the browser page — cookies are already active there
-  // This is more reliable than forwarding cookies via Node http.request
-  try {
-    const result = await ubiAuthWin.webContents.executeJavaScript(`
-      fetch('https://public-ubiservices.ubi.com/v3/profiles/sessions', {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          'Ubi-AppId': '3587dcbb-7f81-457c-9781-0e3f29f6f56a',
-          'Ubi-RequestedPlatformType': 'uplay',
-        },
-        body: JSON.stringify({ rememberMe: true })
-      }).then(r => r.json()).catch(e => ({ _error: e.message }))
-    `);
-
-    console.log("[Auth] In-page exchange result keys:", result ? Object.keys(result).join(",") : "null");
-
-    if (result?.ticket) {
-      console.log("[Auth] ✓ Got ticket via in-page fetch");
-      finishUbiAuth({
-        ticket:         result.ticket,
-        sessionId:      result.sessionId      || "",
-        expiry:         result.expiration ? new Date(result.expiration).getTime() : Date.now() + 6900000,
-        profileId:      result.profileId      || result.userId || null,
-        userId:         result.userId         || null,
-        nameOnPlatform: result.nameOnPlatform || result.username || null,
-      });
-    } else {
-      console.log("[Auth] No ticket — errorCode:", result?.errorCode, result?.message, result?._error);
-    }
-  } catch (e) {
-    console.log("[Auth] exchangeCookieForTicket error:", e.message);
-  }
+  } catch (e) { console.log("[Auth] exchangeCookieForTicket error:", e.message); }
 }
 
 function finishUbiAuth(authData) {
@@ -1053,22 +907,65 @@ function fetchJSONPostSoft(url, headers = {}, body = "") {
   });
 }
 
-// ── Player data — fetched directly from Vercel API, same as the website ────────
-// No local caching or rate-limiting logic; Vercel handles caching (KV) server-side.
-async function fetchProfile(username, platform = "uplay", bustCache = false) {
-  const url = `${API_BASE}/player?username=${encodeURIComponent(username)}&platform=${encodeURIComponent(platform)}` + (bustCache ? "&bust=1" : "");
-  console.log("[fetchProfile] →", url);
-  try {
-    const res  = await net.fetch(url);
-    const data = await res.json();
-    if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
-    if (data?.error) throw new Error(data.error);
-    console.log("[fetchProfile] ✓", username, "kd:", data?.kd, "seasons:", data?.seasonHistory?.length ?? 0);
-    return data;
-  } catch (e) {
-    console.error("[fetchProfile] ✗", username, e.message);
-    throw e;
+// ── In-memory player cache + request queue to prevent rate limiting ──────────
+const PROFILE_CACHE     = new Map();   // key -> { data, ts }
+const PROFILE_CACHE_TTL = 10 * 60 * 1000; // 10 min
+const inflight          = new Map();   // key -> Promise (dedup simultaneous requests)
+let   lastRequestTime   = 0;
+const MIN_REQUEST_GAP   = 600;         // ms between API calls — stays well under rate limit
+
+async function _rateLimitedGet(url) {
+  const now  = Date.now();
+  const wait = MIN_REQUEST_GAP - (now - lastRequestTime);
+  if (wait > 0) await new Promise(r => setTimeout(r, wait));
+  lastRequestTime = Date.now();
+  return fetchJSONGet(url);
+}
+
+async function fetchProfile(username, platform = "uplay", bustCache = false, profileIdHint = null) {
+  const key = (username || "").toLowerCase() + ":" + (platform || "uplay");
+
+  // Cache hit
+  if (!bustCache) {
+    const cached = PROFILE_CACHE.get(key);
+    if (cached && Date.now() - cached.ts < PROFILE_CACHE_TTL) {
+      console.log("[fetchProfile] cache hit:", username);
+      return cached.data;
+    }
   }
+
+  // Dedup — if same player already being fetched, wait for that promise
+  if (!bustCache && inflight.has(key)) {
+    console.log("[fetchProfile] dedup:", username);
+    return inflight.get(key);
+  }
+
+  const promise = (async () => {
+    try {
+      let url = `${API_BASE}/player?username=${encodeURIComponent(username)}&platform=${platform}` + (bustCache ? "&bust=1" : "");
+      if (profileIdHint) url += "&profileId=" + encodeURIComponent(profileIdHint);
+      const data = await _rateLimitedGet(url);
+      if (data?.error) throw new Error(data.error);
+      if (!data?.username) return null;
+      // Auto-bust if profile came back empty
+      if (!bustCache && data.kd == null && (!data.seasonHistory || data.seasonHistory.length === 0)) {
+        console.log("[fetchProfile] empty stats, busting cache for:", username);
+        await new Promise(r => setTimeout(r, MIN_REQUEST_GAP));
+        lastRequestTime = Date.now();
+        const bust = await fetchJSONGet(`${API_BASE}/player?username=${encodeURIComponent(username)}&platform=${platform}&bust=1`);
+        const result = bust?.username ? bust : data;
+        PROFILE_CACHE.set(key, { data: result, ts: Date.now() });
+        return result;
+      }
+      PROFILE_CACHE.set(key, { data, ts: Date.now() });
+      return data;
+    } finally {
+      inflight.delete(key);
+    }
+  })();
+
+  inflight.set(key, promise);
+  return promise;
 }
 
 // ── Token cache (no passwords stored — only the session token) ───────────────
@@ -1115,11 +1012,39 @@ function deleteSavedCreds() { deleteTokenCache(); }
 
 // ── Post-login setup ──────────────────────────────────────────────────────────
 function onLoginSuccess(user) {
-  currentUser = { ...user, profile: null }; // always clear stale cached profile
+  currentUser = user;
   rebuildTrayMenu();
-  startLogWatch(user.profileId);
-  // Send auth-state — renderer will call loadHomeStats and fetch fresh from Vercel
+
+  // Immediately send loggedIn so the renderer shows the app and loading state
   sendToDesktop("auth-state", { loggedIn: true, user: currentUser });
+
+  startLogWatch(user.profileId);
+
+  if (!currentUser.profile) {
+    fetchProfile(currentUser.username, currentUser.platform, false, currentUser.profileId)
+      .then(p => {
+        if (p && currentUser) {
+          currentUser.profile = p;
+          // Persist profile into token cache so next startup is instant
+          saveTokenCache(ubiTicket, ubiSessionId, ubiExpiry, currentUser);
+          // Push again so the renderer renders full stats
+          sendToDesktop("auth-state", { loggedIn: true, user: currentUser });
+        }
+      })
+      .catch(() => {});
+  } else {
+    // Profile already cached — push immediately; also refresh in background
+    sendToDesktop("auth-state", { loggedIn: true, user: currentUser });
+    fetchProfile(currentUser.username, currentUser.platform, true, currentUser.profileId)
+      .then(p => {
+        if (p && currentUser) {
+          currentUser.profile = p;
+          saveTokenCache(ubiTicket, ubiSessionId, ubiExpiry, currentUser);
+          sendToDesktop("auth-state", { loggedIn: true, user: currentUser });
+        }
+      })
+      .catch(() => {});
+  }
 }
 
 function doLogout() {
@@ -1168,7 +1093,7 @@ async function _doAuthGet() {
         sendToOverlay("auth-state", { loggedIn: true, user: currentUser });
         sendToDesktop("auth-state", { loggedIn: true, user: currentUser });
       });
-      return { loggedIn: true, user: { ...currentUser, profile: null } };
+      return { loggedIn: true, user: currentUser };
     }
     } // end !tokenExpired
   }
@@ -1204,46 +1129,10 @@ async function _doAuthGet() {
           sendToOverlay("auth-state", { loggedIn: true, user: currentUser });
           sendToDesktop("auth-state", { loggedIn: true, user: currentUser });
         });
-        return { loggedIn: true, user: { ...currentUser, profile: null } };
+        return { loggedIn: true, user: currentUser };
       }
     }
   } catch (_) {}
-
-  // No valid cached token — but if we have saved cookies, try a silent window auth
-  // This opens the Ubisoft page hidden; if already logged in, Runtime.evaluate grabs ticket
-  // If not logged in, it shows the window so the user can log in normally
-  try {
-    const partition  = "persist:ubi-login";
-    const ubiSession = session.fromPartition(partition);
-    const allCookies = await ubiSession.cookies.get({});
-    const hasAnyCookies = allCookies.some(c => c.domain?.includes("ubisoft"));
-    if (hasAnyCookies) {
-      console.log("[Auth] Cookies found — attempting silent window auth");
-      const auth = await Promise.race([
-        openUbiAuthWindow(true),  // silent = true, starts hidden
-        new Promise(resolve => setTimeout(() => resolve(null), 15000)),
-      ]);
-      if (auth?.ticket) {
-        ubiTicket    = auth.ticket;
-        ubiSessionId = auth.sessionId;
-        ubiExpiry    = auth.expiry;
-        const platform = "uplay";
-        const user = {
-          username:  auth.nameOnPlatform || "Unknown",
-          platform,
-          profileId: auth.profileId || null,
-          profile:   null,
-        };
-        saveTokenCache(ubiTicket, ubiSessionId, ubiExpiry, user);
-        onLoginSuccess(user);
-        setImmediate(() => {
-          sendToOverlay("auth-state", { loggedIn: true, user: currentUser });
-          sendToDesktop("auth-state", { loggedIn: true, user: currentUser });
-        });
-        return { loggedIn: true, user: { ...currentUser, profile: null } };
-      }
-    }
-  } catch (e) { console.log("[Auth] Silent window auth error:", e.message); }
 
   // No valid cached token — user needs to log in via browser window
   return { loggedIn: false, hasSaved: false };
@@ -1308,13 +1197,6 @@ ipcMain.handle("lookup-player", async (_e, { username, platform, slotIndex }) =>
       broadcastRosterUpdate();
     }
     const profile = await fetchProfile(username, platform || "uplay");
-    console.log("[lookup]", username,
-      "kd:", profile?.kd, "mmr:", profile?.mmr, "level:", profile?.level,
-      "seasons:", profile?.seasonHistory?.length ?? 0,
-      "error:", profile?.error ?? "none");
-    if (profile?.seasonHistory?.length > 0) {
-      console.log("[lookup] seasons:", profile.seasonHistory.map(s => `${s.label}(${s.rank||"?"} kd:${s.kd||"?"} matches:${s.matchesPlayed||0})`).join(", "));
-    }
     if (idx >= 0) {
       rosterSlots[idx] = { slotIndex: idx, username, platform: platform || "uplay", isEnemy: idx >= 5, status: profile ? "loaded" : "failed", profile: profile || null };
       broadcastRosterUpdate();

@@ -747,9 +747,14 @@ function setCachedPlayer(username, platform, data) {
   }
 }
 async function lookupPlayerCached(username, platform, opts = {}) {
-  // No renderer-side cache — Vercel handles caching server-side (same as website)
-  const { slotIndex } = opts;
-  return await window.tracker.lookupPlayer({ username, platform, slotIndex });
+  const { slotIndex, forceRefresh = false } = opts;
+  if (!forceRefresh) {
+    const cached = getCachedPlayer(username, platform);
+    if (cached) return { ...cached, _fromCache: true };
+  }
+  const result = await window.tracker.lookupPlayer({ username, platform, slotIndex });
+  if (result && !result.error) setCachedPlayer(username, platform, result);
+  return result;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -1281,24 +1286,31 @@ function loadTopAd() {
   if (adLoaded || adMatchLive) return;
   adLoaded = true;
 
-  const container = document.getElementById('ad-top-inner');
-  if (!container) return;
-
-  // Adsterra requires atOptions on window AND invoke.js appended right after in same scope
+  // atOptions must be in window scope — not inside a container element
   window.atOptions = { key: AD_KEY, format: 'iframe', height: 60, width: 468, params: {} };
 
-  // Both scripts must be injected together into the same container
-  const cfg = document.createElement('script');
-  cfg.text = 'window.atOptions = { key: "' + AD_KEY + '", format: "iframe", height: 60, width: 468, params: {} };';
-  container.appendChild(cfg);
-
+  // Inject invoke script into <head> so it runs in page scope and can find atOptions
   const inv = document.createElement('script');
   inv.src = AD_INV;
-  inv.async = false; // synchronous so it reads atOptions immediately
-  inv.onerror = () => { adLoaded = false; };
-  container.appendChild(inv);
+  inv.async = true;
+  inv.onload = () => {
+    // After script loads, move the iframe it created into our banner container
+    setTimeout(() => {
+      const iframe = document.querySelector('body > iframe, body > ins, body > div[id*="aswift"]');
+      const container = document.getElementById('ad-top-inner');
+      if (iframe && container) {
+        iframe.style.cssText = 'width:468px;height:60px;border:none;display:block';
+        container.appendChild(iframe);
+      }
+      document.getElementById('ad-top-banner').classList.add('visible');
+      const appEl = document.getElementById('app');
+      if (appEl) appEl.style.paddingTop = '68px';
+    }, 500);
+  };
+  inv.onerror = () => { adLoaded = false; }; // allow retry on error
+  document.head.appendChild(inv);
 
-  // Show banner
+  // Show banner immediately even before iframe appears
   document.getElementById('ad-top-banner').classList.add('visible');
   const appEl = document.getElementById('app');
   if (appEl) appEl.style.paddingTop = '68px';
@@ -1323,10 +1335,12 @@ if (window.tracker) {
   initAuth();
   window.tracker.onAuthState(state => {
     if (state.loggedIn && state.user) {
+      // Auth state update (e.g. profile loaded after initial login)
       if (document.getElementById('app').classList.contains('hidden')) {
-        showApp(state.user); // first time — shows app and triggers loadHomeStats
+        showApp(state.user);
+      } else if (state.user.profile) {
+        renderHomeStats(state.user.username, state.user.platform, state.user.profile);
       }
-      // If app is already visible, do nothing — loadHomeStats already running
     } else if (!state.loggedIn) {
       document.getElementById('app').classList.add('hidden');
       document.getElementById('login-screen').classList.remove('hidden');

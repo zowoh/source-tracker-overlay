@@ -1,0 +1,1115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Source Tracker</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--p:#5D3FD3;--p2:#a78bfa;--g:#22c55e;--r:#ef4444;--y:#fbbf24;--bg:rgba(4,4,12,.94)}
+
+body{
+  background:transparent;font-family:'Inter',sans-serif;font-size:13px;color:#fff;
+  user-select:none;-webkit-app-region:drag;overflow:hidden;
+}
+
+/* ══════════ PANEL SHELL ══════════ */
+#panel{
+  background:var(--bg);border:1px solid rgba(93,63,211,.65);border-radius:13px;
+  overflow:hidden;box-shadow:0 8px 48px rgba(0,0,0,.85),0 0 0 1px rgba(93,63,211,.07);
+  min-width:400px;max-width:430px;display:flex;flex-direction:column;
+}
+#panel::before{content:'';display:block;height:2px;flex-shrink:0;
+  background:linear-gradient(90deg,transparent,#5D3FD3,#a78bfa,#5D3FD3,transparent)}
+
+/* ══════════ HEADER ══════════ */
+#header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 12px 7px;flex-shrink:0;-webkit-app-region:drag;
+}
+#header-left{display:flex;align-items:center;gap:7px}
+.app-name{font-family:'Sora',sans-serif;font-size:12px;font-weight:800;color:#fff;letter-spacing:.3px}
+#live-dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.15);flex-shrink:0;transition:background .3s}
+#live-dot.scanning{background:#22c55e;animation:pulse 1.6s infinite}
+#live-dot.live{background:#ef4444;animation:pulse 1s infinite}
+
+/* user pill */
+#user-pill{display:none;align-items:center;gap:5px;
+  background:rgba(93,63,211,.12);border:1px solid rgba(93,63,211,.3);
+  border-radius:10px;padding:2px 8px 2px 6px}
+#user-pill.show{display:flex}
+#user-pill-name{font-size:10px;font-weight:600;color:#a78bfa}
+
+/* header right */
+#header-right{display:flex;align-items:center;gap:5px;-webkit-app-region:no-drag}
+.icon-btn{
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
+  color:rgba(255,255,255,.4);border-radius:5px;padding:2px 7px;
+  font-size:11px;cursor:pointer;transition:all .15s;line-height:1.6;
+}
+.icon-btn:hover{background:rgba(93,63,211,.22);border-color:rgba(93,63,211,.5);color:#a78bfa}
+.icon-btn.active{background:rgba(93,63,211,.18);border-color:#5D3FD3;color:#a78bfa}
+.icon-btn.red:hover{background:rgba(239,68,68,.18);border-color:rgba(239,68,68,.4);color:#ef4444}
+
+/* ══════════ LOGIN GATE ══════════ */
+#login-gate{padding:20px 18px 18px}
+#login-gate.hidden{display:none}
+
+.login-title{
+  font-family:'Sora',sans-serif;font-size:15px;font-weight:800;color:#fff;
+  text-align:center;margin-bottom:4px;
+}
+.login-sub{font-size:11px;color:rgba(255,255,255,.3);text-align:center;margin-bottom:16px;line-height:1.55}
+
+.privacy-bar{
+  display:flex;align-items:flex-start;gap:8px;
+  background:rgba(34,197,94,.07);border:1px solid rgba(34,197,94,.2);
+  border-radius:7px;padding:8px 11px;margin-bottom:14px;
+}
+.privacy-bar-icon{font-size:13px;flex-shrink:0;line-height:1.5}
+.privacy-bar-text{font-size:10px;color:rgba(255,255,255,.45);line-height:1.6}
+.privacy-bar-text strong{color:rgba(34,197,94,.85);font-weight:600}
+
+.fi-inp{
+  width:100%;background:rgba(93,63,211,.08);border:1px solid rgba(93,63,211,.28);
+  color:#fff;font-family:'Inter',sans-serif;font-size:12px;padding:9px 11px;
+  outline:none;border-radius:7px;margin-bottom:8px;transition:border-color .15s;
+}
+.fi-inp:focus{border-color:#5D3FD3}
+.fi-inp::placeholder{color:rgba(255,255,255,.18)}
+
+.fi-sel{
+  width:100%;background:rgba(93,63,211,.08);border:1px solid rgba(93,63,211,.28);
+  color:#fff;font-family:'Inter',sans-serif;font-size:12px;padding:9px 11px;
+  outline:none;border-radius:7px;margin-bottom:10px;cursor:pointer;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23a78bfa' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 11px center;
+}
+.fi-sel option{background:#0c0c1a}
+
+/* save checkbox */
+.save-row{
+  display:flex;align-items:center;gap:8px;margin-bottom:12px;cursor:pointer;
+  background:rgba(93,63,211,.07);border:1px solid rgba(93,63,211,.2);
+  border-radius:6px;padding:8px 11px;
+}
+.save-row input{width:14px;height:14px;accent-color:#5D3FD3;cursor:pointer;flex-shrink:0}
+.save-row-lbl{font-size:11px;color:rgba(255,255,255,.6)}
+.save-row-lbl small{display:block;font-size:10px;color:rgba(255,255,255,.28);margin-top:1px}
+
+.login-btn{
+  width:100%;padding:10px 0;border-radius:8px;border:none;
+  background:linear-gradient(135deg,#5D3FD3,#7c3aed);color:#fff;
+  font-family:'Sora',sans-serif;font-weight:700;font-size:13px;
+  cursor:pointer;letter-spacing:.3px;transition:opacity .15s;
+  box-shadow:0 3px 16px rgba(93,63,211,.4);
+}
+.login-btn:hover{opacity:.88}
+.login-btn:disabled{opacity:.4;cursor:not-allowed;box-shadow:none}
+
+.login-err{
+  background:rgba(239,68,68,.09);border:1px solid rgba(239,68,68,.3);
+  border-radius:6px;padding:7px 10px;font-size:11px;color:#ef4444;
+  margin-bottom:10px;display:none;
+}
+.login-err.show{display:block}
+
+/* autofill chip */
+.autofill-chip{
+  display:none;align-items:center;gap:8px;margin-bottom:10px;
+  background:rgba(34,197,94,.07);border:1px solid rgba(34,197,94,.25);
+  border-radius:6px;padding:7px 11px;
+}
+.autofill-chip.show{display:flex}
+.autofill-chip span{font-size:11px;color:rgba(255,255,255,.55)}
+.autofill-chip strong{color:#22c55e;font-weight:600}
+
+/* 2FA digits */
+#tfa-panel{display:none}
+#tfa-panel.show{display:block}
+.tfa-info{display:flex;align-items:flex-start;gap:8px;
+  background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.25);
+  border-radius:7px;padding:8px 11px;margin-bottom:12px}
+.tfa-info-icon{font-size:13px;flex-shrink:0;line-height:1.5}
+.tfa-info-text{font-size:11px;color:rgba(255,255,255,.5);line-height:1.6}
+.tfa-info-text strong{color:#fbbf24;font-weight:600}
+.tfa-digits{display:flex;gap:6px;justify-content:center;margin-bottom:12px}
+.tfa-d{width:38px;height:46px;background:rgba(93,63,211,.09);
+  border:1.5px solid rgba(93,63,211,.35);border-radius:7px;
+  color:#fff;font-family:'Sora',sans-serif;font-size:20px;font-weight:700;
+  text-align:center;outline:none;transition:border-color .15s}
+.tfa-d:focus{border-color:#a78bfa}
+.tfa-d.filled{border-color:rgba(93,63,211,.6);background:rgba(93,63,211,.14)}
+.tfa-back{background:none;border:none;color:rgba(255,255,255,.3);font-size:11px;
+  cursor:pointer;padding:0 0 10px;display:flex;align-items:center;gap:4px}
+.tfa-back:hover{color:rgba(255,255,255,.6)}
+
+/* ══════════ TABS ══════════ */
+#tabs{display:none;flex-shrink:0}
+#tabs.show{display:flex}
+.tab-bar{
+  display:flex;border-bottom:1px solid rgba(93,63,211,.15);
+  background:rgba(93,63,211,.03);
+}
+.tab-btn{
+  flex:1;padding:9px 0;font-family:'Sora',sans-serif;font-size:11px;font-weight:700;
+  letter-spacing:1.2px;text-transform:uppercase;color:rgba(255,255,255,.3);
+  background:none;border:none;cursor:pointer;border-bottom:2px solid transparent;
+  transition:all .15s;-webkit-app-region:no-drag;
+}
+.tab-btn:hover{color:rgba(255,255,255,.6)}
+.tab-btn.active{color:#a78bfa;border-bottom-color:#5D3FD3}
+
+/* ══════════ TAB CONTENTS ══════════ */
+.tab-content{display:none;flex-direction:column;overflow-y:auto;flex:1}
+.tab-content.active{display:flex}
+.tab-content::-webkit-scrollbar{width:2px}
+.tab-content::-webkit-scrollbar-thumb{background:rgba(93,63,211,.3);border-radius:2px}
+
+/* ── LIVE MATCH TAB ── */
+#tab-live{padding:0}
+
+.match-status-bar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 13px;border-bottom:1px solid rgba(93,63,211,.1);flex-shrink:0;
+}
+.ms-left{display:flex;align-items:center;gap:7px}
+.ms-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.ms-dot.scanning{background:#22c55e;animation:pulse 1.6s infinite}
+.ms-dot.live{background:#ef4444;animation:pulse 1s infinite}
+.ms-dot.idle{background:rgba(255,255,255,.18)}
+.ms-label{font-size:11px;font-weight:600}
+.ms-label.scanning{color:#22c55e}
+.ms-label.live{color:#ef4444}
+.ms-label.idle{color:rgba(255,255,255,.35)}
+.ms-snap{font-size:10px;color:rgba(255,255,255,.22)}
+
+/* waiting state */
+.waiting-block{
+  padding:24px 18px;text-align:center;
+}
+.waiting-icon{font-size:30px;margin-bottom:10px}
+.waiting-title{font-family:'Sora',sans-serif;font-size:13px;font-weight:700;color:rgba(255,255,255,.7);margin-bottom:4px}
+.waiting-sub{font-size:11px;color:rgba(255,255,255,.3);line-height:1.6}
+
+/* roster sections */
+.team-section{padding:8px 12px}
+.team-section+.team-section{border-top:1px solid rgba(93,63,211,.1)}
+.team-lbl{font-family:'Sora',sans-serif;font-size:9px;font-weight:700;
+  letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;
+  display:flex;align-items:center;gap:6px}
+.team-lbl::after{content:'';flex:1;height:1px}
+.team-lbl.your{color:#a78bfa}.team-lbl.your::after{background:linear-gradient(90deg,rgba(167,139,250,.3),transparent)}
+.team-lbl.enemy{color:#f87171}.team-lbl.enemy::after{background:linear-gradient(90deg,rgba(248,113,113,.3),transparent)}
+
+/* vs divider */
+.vs-div{margin:2px 12px;height:1px;position:relative;
+  background:linear-gradient(90deg,transparent,rgba(93,63,211,.5) 30%,rgba(93,63,211,.8) 45%,rgba(248,113,113,.8) 55%,rgba(248,113,113,.5) 70%,transparent)}
+.vs-div::before{content:'VS';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  background:var(--bg);padding:0 6px;
+  font-family:'Sora',sans-serif;font-size:9px;font-weight:800;letter-spacing:3px;color:#a78bfa}
+
+/* player rows */
+.prow{
+  display:flex;align-items:center;gap:6px;padding:4px 6px;border-radius:5px;
+  margin-bottom:3px;min-height:34px;-webkit-app-region:no-drag;transition:border-color .13s;
+  background:rgba(93,63,211,.04);border:1px solid rgba(93,63,211,.1);
+}
+.prow.enemy{border-color:rgba(248,113,113,.08);background:rgba(248,113,113,.02)}
+.prow.you{border-color:rgba(93,63,211,.3);background:rgba(93,63,211,.08)}
+.prow:hover{border-color:rgba(93,63,211,.28)}
+.prow.enemy:hover{border-color:rgba(248,113,113,.26)}
+.slot-num{width:14px;font-size:9px;font-weight:600;color:rgba(255,255,255,.16);flex-shrink:0;text-align:center}
+.pinfo{flex:1;min-width:0}
+.pname{font-weight:600;font-size:12px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pname.you{color:#a78bfa}.pname.anon{color:rgba(255,255,255,.35);font-style:italic}
+.psub{font-size:10px;font-weight:500;margin-top:1px}
+.stats-r{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.stat-p{text-align:right}
+.stat-v{font-family:'Sora',sans-serif;font-size:12px;font-weight:700}
+.stat-l{font-size:9px;color:rgba(255,255,255,.26)}
+.badge{font-size:9px;font-weight:700;padding:2px 5px;border-radius:3px;flex-shrink:0}
+.pb{font-size:9px;color:rgba(255,255,255,.26);background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.08);padding:1px 5px;border-radius:3px}
+
+/* empty slot input */
+.slot-input-row{display:flex;gap:4px;align-items:center;flex:1;-webkit-app-region:no-drag}
+.slot-inp{flex:1;background:rgba(93,63,211,.08);border:1px solid rgba(93,63,211,.28);
+  color:#fff;font-family:'Inter',sans-serif;font-size:10px;padding:3px 6px;
+  outline:none;border-radius:4px;min-width:0}
+.slot-inp::placeholder{color:rgba(255,255,255,.18)}
+.slot-inp:focus{border-color:#5D3FD3}
+.slot-go{background:rgba(93,63,211,.12);border:1px solid rgba(93,63,211,.38);
+  color:#a78bfa;font-size:10px;font-weight:600;padding:3px 7px;
+  border-radius:4px;cursor:pointer;flex-shrink:0;-webkit-app-region:no-drag}
+.slot-go:hover{background:rgba(93,63,211,.26)}
+
+/* ── LOOKUP TAB ── */
+#tab-lookup{padding:12px}
+
+.lookup-form{margin-bottom:12px}
+.lookup-row{display:flex;gap:6px;margin-bottom:7px;-webkit-app-region:no-drag}
+.lookup-inp{
+  flex:1;background:rgba(93,63,211,.08);border:1px solid rgba(93,63,211,.28);
+  color:#fff;font-family:'Inter',sans-serif;font-size:12px;padding:9px 11px;
+  outline:none;border-radius:7px;transition:border-color .15s;
+}
+.lookup-inp:focus{border-color:#5D3FD3}
+.lookup-inp::placeholder{color:rgba(255,255,255,.18)}
+.lookup-plat{
+  background:rgba(93,63,211,.08);border:1px solid rgba(93,63,211,.28);
+  color:#fff;font-family:'Inter',sans-serif;font-size:11px;padding:0 10px;
+  outline:none;border-radius:7px;cursor:pointer;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='6' fill='none'%3E%3Cpath d='M1 1l3 3 3-3' stroke='%23a78bfa' stroke-width='1.2' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 8px center;padding-right:22px;
+}
+.lookup-plat option{background:#0c0c1a}
+.lookup-search-btn{
+  background:linear-gradient(135deg,#5D3FD3,#7c3aed);border:none;color:#fff;
+  font-family:'Sora',sans-serif;font-size:11px;font-weight:700;padding:0 14px;
+  border-radius:7px;cursor:pointer;white-space:nowrap;letter-spacing:.3px;
+  -webkit-app-region:no-drag;
+}
+.lookup-search-btn:hover{opacity:.88}
+.lookup-search-btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* result card */
+.result-card{
+  background:rgba(93,63,211,.06);border:1px solid rgba(93,63,211,.25);
+  border-radius:9px;padding:14px;position:relative;
+}
+.result-name{font-family:'Sora',sans-serif;font-size:14px;font-weight:800;color:#fff;margin-bottom:3px}
+.result-rank{font-size:12px;font-weight:600;margin-bottom:10px}
+.result-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
+.stat-box{background:rgba(93,63,211,.08);border:1px solid rgba(93,63,211,.15);
+  border-radius:6px;padding:8px 10px;text-align:center}
+.stat-box-v{font-family:'Sora',sans-serif;font-size:16px;font-weight:800}
+.stat-box-l{font-size:9px;color:rgba(255,255,255,.3);margin-top:2px;text-transform:uppercase;letter-spacing:.5px}
+.result-badges{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px}
+.result-badge{font-size:10px;font-weight:700;padding:3px 8px;border-radius:4px}
+.result-err{font-size:12px;color:#ef4444;padding:12px 0;text-align:center}
+.result-loading{padding:18px 0;text-align:center}
+
+/* season history */
+.season-mini{display:flex;gap:4px;flex-wrap:wrap}
+.season-pill{font-size:9px;font-weight:600;padding:2px 6px;border-radius:3px;
+  border:1px solid;white-space:nowrap}
+
+/* ── AD STRIP ── */
+#ad-strip{
+  border-top:1px solid rgba(93,63,211,.1);padding:5px 10px;
+  display:flex;align-items:center;justify-content:center;
+  min-height:58px;flex-shrink:0;-webkit-app-region:no-drag;
+  background:rgba(93,63,211,.02);
+}
+#ad-overlay{width:320px;min-height:50px;display:flex;align-items:center;justify-content:center}
+
+/* ── SHIMMER ── */
+.sh{background:linear-gradient(90deg,rgba(93,63,211,.06) 25%,rgba(93,63,211,.13) 50%,rgba(93,63,211,.06) 75%);
+  background-size:200% 100%;animation:shim 1.4s infinite;border-radius:3px}
+
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.2;transform:scale(.45)}}
+@keyframes shim{0%{background-position:200% 0}100%{background-position:-200% 0}}
+@keyframes fadein{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.fi{animation:fadein .25s ease both}
+</style>
+</head>
+<body>
+
+<div id="panel">
+  <!-- Top gradient bar rendered by ::before -->
+
+  <!-- ══ HEADER ══ -->
+  <div id="header">
+    <div id="header-left">
+      <div id="live-dot"></div>
+      <span class="app-name">Source Tracker</span>
+      <div id="user-pill">
+        <div style="width:5px;height:5px;border-radius:50%;background:#22c55e;flex-shrink:0"></div>
+        <span id="user-pill-name"></span>
+      </div>
+    </div>
+    <div id="header-right">
+      <button class="icon-btn" id="lock-btn" title="Toggle click-through" onclick="toggleClickThrough()">🖱</button>
+      <button class="icon-btn red" title="Clear roster" onclick="doClear()">✕</button>
+    </div>
+  </div>
+
+  <!-- ══ LOGIN GATE ══ -->
+  <div id="login-gate">
+    <div class="login-title">Source Tracker</div>
+    <div class="login-sub">Sign in with your Ubisoft Connect account<br>to enable live match detection</div>
+
+    <div class="privacy-bar">
+      <span class="privacy-bar-icon">🔒</span>
+      <div class="privacy-bar-text">
+        <strong>Your data stays on your device.</strong><br>
+        Credentials are encrypted locally using Windows DPAPI. The developer and no one else ever has access.
+      </div>
+    </div>
+
+    <div class="autofill-chip" id="autofill-chip">
+      🔐 <span>Saved: <strong id="autofill-user">—</strong></span>
+    </div>
+
+    <div class="login-err" id="login-err"></div>
+
+    <!-- Step 1: credentials -->
+    <div id="creds-panel">
+      <button class="login-btn" id="login-btn" onclick="doLogin()">Sign in with Ubisoft Connect</button>
+      <div style="text-align:center;font-size:10px;color:rgba(255,255,255,.3);margin-top:6px">
+        A login window will open — 2FA handled automatically
+      </div>
+    </div>
+
+    <!-- Step 2: 2FA -->
+    <div id="tfa-panel">
+      <button class="tfa-back" onclick="showCredsPanel()">← Back</button>
+      <div class="tfa-info">
+        <span class="tfa-info-icon">📱</span>
+        <div class="tfa-info-text">
+          <strong>Two-factor authentication required.</strong><br>
+          Enter the 6-digit code from your authenticator app or SMS.
+        </div>
+      </div>
+      <div class="tfa-digits">
+        <input class="tfa-d" id="td0" type="text" inputmode="numeric" maxlength="1"/>
+        <input class="tfa-d" id="td1" type="text" inputmode="numeric" maxlength="1"/>
+        <input class="tfa-d" id="td2" type="text" inputmode="numeric" maxlength="1"/>
+        <input class="tfa-d" id="td3" type="text" inputmode="numeric" maxlength="1"/>
+        <input class="tfa-d" id="td4" type="text" inputmode="numeric" maxlength="1"/>
+        <input class="tfa-d" id="td5" type="text" inputmode="numeric" maxlength="1"/>
+      </div>
+      <button class="login-btn" id="tfa-btn" onclick="doSubmit2FA()">Verify &amp; Sign In</button>
+    </div>
+  </div>
+
+  <!-- ══ TABS (shown after login) ══ -->
+  <div id="tabs">
+    <div class="tab-bar">
+      <button class="tab-btn active" id="btn-live"   onclick="switchTab('live')">🔴 Live Match</button>
+      <button class="tab-btn"        id="btn-lookup" onclick="switchTab('lookup')">🔍 Lookup</button>
+    </div>
+
+    <!-- LIVE MATCH tab -->
+    <div class="tab-content active" id="tab-live">
+
+      <div class="match-status-bar">
+        <div class="ms-left">
+          <div class="ms-dot scanning" id="ms-dot"></div>
+          <span class="ms-label scanning" id="ms-label">Watching log…</span>
+        </div>
+        <span class="ms-snap" id="ms-snap"></span>
+      </div>
+
+      <!-- Waiting state -->
+      <div class="waiting-block" id="waiting-block">
+        <div class="waiting-icon">🎮</div>
+        <div class="waiting-title">Waiting for a match</div>
+        <div class="waiting-sub">
+          Log file watching is active.<br>
+          Slots will fill automatically when you enter a match.
+        </div>
+      </div>
+
+      <!-- Roster (hidden until match starts) -->
+      <div id="roster-block" style="display:none">
+        <div class="team-section">
+          <div class="team-lbl your">Your Team</div>
+          <div id="your-team"></div>
+        </div>
+        <div class="vs-div"></div>
+        <div class="team-section">
+          <div class="team-lbl enemy">Enemy Team</div>
+          <div id="enemy-team"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- LOOKUP tab -->
+    <div class="tab-content" id="tab-lookup">
+      <div class="lookup-form">
+        <div class="lookup-row">
+          <input class="lookup-inp" id="lu-inp" type="text" placeholder="Search any Ubisoft player…" spellcheck="false"/>
+          <select class="lookup-plat" id="lu-plat">
+            <option value="uplay">PC</option>
+            <option value="psn">PSN</option>
+            <option value="xbl">XBL</option>
+          </select>
+          <button class="lookup-search-btn" id="lu-btn" onclick="doLookup()">Search</button>
+        </div>
+      </div>
+      <div id="lu-result"></div>
+    </div>
+  </div>
+
+  <!-- Ad strip -->
+  <div id="ad-strip">
+    <div id="ad-overlay"></div>
+  </div>
+</div>
+
+<script data-cfasync="false" src="https://dcbbwymp1bhlf.cloudfront.net/?wbbcd=1247001"></script>
+
+<script>
+// ════════════════════════════════════════════════════
+// HELPERS
+// ════════════════════════════════════════════════════
+const rc = r => {
+  if (!r) return '#a78bfa';
+  const s = r.toLowerCase();
+  if (s.includes('champion')) return '#f0c040';
+  if (s.includes('diamond'))  return '#a78bfa';
+  if (s.includes('emerald'))  return '#34d399';
+  if (s.includes('platinum')) return '#67e8f9';
+  if (s.includes('gold'))     return '#fbbf24';
+  if (s.includes('silver'))   return '#94a3b8';
+  if (s.includes('bronze'))   return '#cd7f32';
+  return '#a78bfa';
+};
+const sc = (v, t = 1.0) => {
+  const n = parseFloat(v);
+  return isNaN(n) ? 'rgba(255,255,255,.35)' : (n >= t ? '#22c55e' : '#ef4444');
+};
+const emo = v => ({ likely_cheater:'🚨', likely_smurf:'🎭', suspicious:'⚠️' }[v] || '');
+
+// ════════════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════════════
+let loggedIn   = false;
+let currentTab = 'live';
+let matchLive  = false;
+let loginBusy  = false;
+let pendingTfa = { username: null, platform: null, password: null, save: false };
+
+// ════════════════════════════════════════════════════
+// LOGIN GATE
+// ════════════════════════════════════════════════════
+async function initAuth() {
+  if (!window.tracker) return;
+  const state = await window.tracker.authGet();
+
+  if (state.hasSaved && state.savedUsername) {
+    document.getElementById('autofill-chip').classList.add('show');
+    document.getElementById('autofill-user').textContent = state.savedUsername;
+    document.getElementById('inp-user').value = state.savedEmail || state.savedUsername;
+  }
+
+  if (state.restoringSession) {
+    const btn = document.getElementById('login-btn');
+    btn.textContent = 'Restoring session…';
+    btn.disabled    = true;
+    return;
+  }
+
+  if (state.loggedIn && state.user) enterApp(state.user);
+}
+
+async function doLogin() {
+  if (loginBusy) return;
+  loginBusy = true;
+  const btn = document.getElementById('login-btn');
+  btn.disabled = true;
+  btn.textContent = 'Opening login…';
+  hideErr();
+
+  const result = await window.tracker.authLogin({ save: true });
+  loginBusy = false;
+  btn.disabled = false;
+  btn.textContent = 'Sign in with Ubisoft Connect';
+
+  if (result.success) {
+    enterApp(result.user);
+  } else {
+    showErr(result.error || 'Sign-in failed. Please try again.');
+  }
+}
+
+async function doSubmit2FA() {
+  if (loginBusy) return;
+  const code = Array.from({ length: 6 }, (_, i) =>
+    (document.getElementById(`td${i}`)?.value || '').trim()
+  ).join('');
+  if (code.length < 6) { showErr('Enter all 6 digits.'); return; }
+
+  loginBusy = true;
+  const btn = document.getElementById('tfa-btn');
+  btn.disabled = true; btn.textContent = 'Verifying…';
+  hideErr();
+
+  const result = await window.tracker.authLogin({ ...pendingTfa, tfaCode: code });
+  loginBusy = false;
+  btn.disabled = false; btn.textContent = 'Verify & Sign In';
+
+  if (result.success) {
+    enterApp(result.user);
+  } else {
+    showErr(result.error || 'Invalid code. Try again.');
+    for (let i = 0; i < 6; i++) {
+      const d = document.getElementById(`td${i}`);
+      d.value = ''; d.classList.remove('filled');
+    }
+    document.getElementById('td0')?.focus();
+  }
+}
+
+function showTfaPanel() {
+  document.getElementById('creds-panel').style.display = 'none';
+  document.getElementById('tfa-panel').classList.add('show');
+  hideErr();
+  setTimeout(() => document.getElementById('td0')?.focus(), 60);
+}
+
+function showCredsPanel() {
+  document.getElementById('tfa-panel').classList.remove('show');
+  document.getElementById('creds-panel').style.display = '';
+  hideErr();
+  for (let i = 0; i < 6; i++) {
+    const d = document.getElementById(`td${i}`);
+    if (d) { d.value = ''; d.classList.remove('filled'); }
+  }
+}
+
+function enterApp(user) {
+  loggedIn = true;
+  document.getElementById('login-gate').classList.add('hidden');
+  document.getElementById('tabs').classList.add('show');
+  document.getElementById('user-pill').classList.add('show');
+  document.getElementById('user-pill-name').textContent = user.username;
+  setLiveDot('scanning');
+  switchTab('live');
+}
+
+function showErr(msg) {
+  const el = document.getElementById('login-err');
+  el.textContent = msg; el.classList.add('show');
+}
+function hideErr() {
+  document.getElementById('login-err').classList.remove('show');
+}
+
+// 2FA digit keyboard
+document.querySelectorAll('.tfa-d').forEach((inp, i, all) => {
+  inp.addEventListener('input', e => {
+    inp.value = inp.value.replace(/\D/g, '').slice(-1);
+    inp.classList.toggle('filled', !!inp.value);
+    if (inp.value && i < all.length - 1) all[i + 1].focus();
+    if (Array.from(all).every(d => d.value)) doSubmit2FA();
+  });
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Backspace' && !inp.value && i > 0) all[i - 1].focus();
+    if (e.key === 'Enter') doSubmit2FA();
+  });
+  inp.addEventListener('paste', e => {
+    e.preventDefault();
+    const paste = (e.clipboardData.getData('text') || '').replace(/\D/g, '').slice(0, 6);
+    paste.split('').forEach((ch, j) => {
+      if (all[i + j]) { all[i + j].value = ch; all[i + j].classList.add('filled'); }
+    });
+    all[Math.min(i + paste.length, all.length - 1)]?.focus();
+    if (paste.length === 6) doSubmit2FA();
+  });
+});
+document.getElementById('inp-user').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+
+// ════════════════════════════════════════════════════
+// TABS
+// ════════════════════════════════════════════════════
+function switchTab(name) {
+  currentTab = name;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById(`btn-${name}`).classList.add('active');
+  document.getElementById(`tab-${name}`).classList.add('active');
+}
+
+// ════════════════════════════════════════════════════
+// LIVE MATCH DOT / STATUS
+// ════════════════════════════════════════════════════
+function setLiveDot(state) {
+  // state: 'idle' | 'scanning' | 'live'
+  const dot   = document.getElementById('live-dot');
+  const msDot = document.getElementById('ms-dot');
+  const msLbl = document.getElementById('ms-label');
+  dot.className   = state === 'live' ? 'live' : state === 'scanning' ? 'scanning' : '';
+  if (msDot) msDot.className = `ms-dot ${state}`;
+  if (msLbl) {
+    msLbl.className = `ms-label ${state}`;
+    msLbl.textContent = state === 'live' ? '🔴 Match Live' : state === 'scanning' ? 'Scanning for match…' : 'Idle';
+  }
+}
+
+function setSnapLabel(snap) {
+  const el = document.getElementById('ms-snap');
+  if (!el || !snap) return;
+  el.textContent = snap.mmr ? `${snap.mmr} RP` : '';
+}
+
+// ════════════════════════════════════════════════════
+// ROSTER RENDERING
+// ════════════════════════════════════════════════════
+const inputVals = {};
+function getIV(idx) { return inputVals[idx] || ''; }
+function setIV(idx, v) { inputVals[idx] = v; }
+
+async function lookupSlot(idx) {
+  const u = getIV(idx).trim();
+  if (!u) return;
+  // Use cache for slot lookups too — avoids rate limits for repeated searches
+  const cached = getCachedPlayer(u, 'uplay');
+  if (cached) {
+    // Inject cached result directly via the slot API
+    await window.tracker?.setSlot({ slotIndex: idx, data: { ...cached, _fromCache: true } });
+  } else {
+    const result = await window.tracker?.lookupPlayer({ username: u, platform: 'uplay', slotIndex: idx });
+    if (result && !result.error) setCachedPlayer(u, 'uplay', result);
+  }
+}
+
+function buildRow(slot, idx, isEnemy) {
+  const row = document.createElement('div');
+  row.className = `prow${isEnemy ? ' enemy' : ''}`;
+
+  const num = document.createElement('span');
+  num.className = 'slot-num';
+  num.textContent = idx + 1;
+  row.appendChild(num);
+
+  // Empty — show input
+  if (!slot || slot.status === 'empty') {
+    const ir = document.createElement('div');
+    ir.className = 'slot-input-row';
+    const inp = document.createElement('input');
+    inp.className = 'slot-inp';
+    inp.placeholder = 'Enter username…';
+    inp.value = getIV(idx);
+    inp.addEventListener('input',   e => setIV(idx, e.target.value));
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') lookupSlot(idx); });
+    const go = document.createElement('button');
+    go.className = 'slot-go';
+    go.textContent = 'Look up';
+    go.addEventListener('click', () => lookupSlot(idx));
+    ir.appendChild(inp); ir.appendChild(go); row.appendChild(ir);
+    return row;
+  }
+
+  // Loading shimmer
+  if (slot.status === 'loading') {
+    const info = document.createElement('div');
+    info.className = 'pinfo';
+    info.innerHTML = `<div class="sh" style="height:11px;width:100px;margin-bottom:3px"></div>
+                      <div class="sh" style="height:9px;width:60px"></div>`;
+    row.appendChild(info);
+    const sr = document.createElement('div');
+    sr.className = 'stats-r';
+    sr.innerHTML = '<div class="sh" style="height:12px;width:28px"></div>';
+    row.appendChild(sr);
+    return row;
+  }
+
+  const p      = slot.profile;
+  const isYou  = idx === 0;
+  const name   = slot.isAnonymous ? 'Anonymous' : (p?._displayName || p?.username || slot.username || 'Unknown');
+  const hidden = p && p.statsPrivate && !p.resolvedViaProfileId;
+
+  if (isYou) row.classList.add('you');
+
+  const info = document.createElement('div');
+  info.className = 'pinfo';
+  const nameEl = document.createElement('div');
+  nameEl.className = `pname${slot.isAnonymous ? ' anon' : ''}${isYou ? ' you' : ''}`;
+  nameEl.textContent = name + (isYou ? ' ★' : '');
+  info.appendChild(nameEl);
+
+  if (!p) {
+    const retry = document.createElement('button');
+    retry.className = 'slot-go';
+    retry.style.cssText = 'font-size:9px;margin-top:3px';
+    retry.textContent = '↺ Retry';
+    retry.addEventListener('click', () => lookupSlot(idx));
+    info.appendChild(retry);
+    row.appendChild(info);
+    return row;
+  }
+
+  if (hidden) {
+    const pb = document.createElement('span'); pb.className = 'pb'; pb.textContent = '🔒 Private';
+    info.appendChild(pb); row.appendChild(info); return row;
+  }
+
+  const sub = document.createElement('div');
+  sub.className = 'psub'; sub.style.color = rc(p.rank);
+  sub.textContent = p.rank || 'Unranked';
+  info.appendChild(sub);
+  row.appendChild(info);
+
+  const sr = document.createElement('div');
+  sr.className = 'stats-r';
+  sr.innerHTML = `
+    <div class="stat-p">
+      <div class="stat-v" style="color:${sc(p.kd)}">${p.kd ?? '—'}</div>
+      <div class="stat-l">K/D</div>
+    </div>
+    <div class="stat-p">
+      <div class="stat-v" style="color:${sc(p.winRate,50)}">${p.winRate != null ? p.winRate+'%' : '—'}</div>
+      <div class="stat-l">WR</div>
+    </div>`;
+
+  if (p.detection?.verdict !== 'clean' && p.detection?.label) {
+    const b = document.createElement('span');
+    b.className = 'badge';
+    b.style.cssText = `color:${p.detection.color};background:${p.detection.color}18;border:1px solid ${p.detection.color}44`;
+    b.textContent = emo(p.detection.verdict);
+    sr.appendChild(b);
+  }
+  row.appendChild(sr);
+  return row;
+}
+
+function renderRoster(payload) {
+  const { yourTeam = [], enemyTeam = [] } = payload || {};
+  const hasData = [...yourTeam, ...enemyTeam].some(s => s?.status !== 'empty');
+
+  document.getElementById('waiting-block').style.display = hasData ? 'none' : 'block';
+  document.getElementById('roster-block').style.display  = hasData ? 'block' : 'none';
+
+  if (!hasData) return;
+
+  const yt = document.getElementById('your-team');
+  const et = document.getElementById('enemy-team');
+  yt.innerHTML = ''; et.innerHTML = '';
+  yourTeam.forEach((s, i)  => yt.appendChild(buildRow(s, i,     false)));
+  enemyTeam.forEach((s, i) => et.appendChild(buildRow(s, i + 5, true)));
+}
+
+function doClear() { window.tracker?.clearRoster(); }
+
+// ════════════════════════════════════════════════════
+// PLAYER CACHE
+// ════════════════════════════════════════════════════
+const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+const _playerCache = {};
+
+function _cacheKey(username, platform) {
+  return (username || '').trim().toLowerCase() + ':' + (platform || 'uplay');
+}
+function getCachedPlayer(username, platform) {
+  const entry = _playerCache[_cacheKey(username, platform)];
+  if (!entry) return null;
+  if (Date.now() - entry.ts > CACHE_TTL) {
+    delete _playerCache[_cacheKey(username, platform)];
+    return null;
+  }
+  return entry.data;
+}
+function setCachedPlayer(username, platform, data) {
+  _playerCache[_cacheKey(username, platform)] = { ts: Date.now(), data };
+  // Keep max 50 entries — evict oldest
+  const keys = Object.keys(_playerCache);
+  if (keys.length > 50) {
+    keys.sort((a, b) => _playerCache[a].ts - _playerCache[b].ts);
+    keys.slice(0, keys.length - 50).forEach(k => delete _playerCache[k]);
+  }
+}
+
+// Wraps window.tracker.lookupPlayer with cache
+async function lookupPlayerCached(username, platform, opts = {}) {
+  const { slotIndex, forceRefresh = false } = opts;
+  if (!forceRefresh) {
+    const cached = getCachedPlayer(username, platform);
+    if (cached) return { ...cached, _fromCache: true };
+  }
+  const result = await window.tracker.lookupPlayer({ username, platform, slotIndex });
+  if (result && !result.error) {
+    setCachedPlayer(username, platform, result);
+  }
+  return result;
+}
+
+// ════════════════════════════════════════════════════
+// LOOKUP TAB
+// ════════════════════════════════════════════════════
+let lookupBusy = false;
+document.getElementById('lu-inp').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLookup();
+});
+
+async function doLookup() {
+  if (lookupBusy) return;
+  const username = document.getElementById('lu-inp').value.trim();
+  const platform = document.getElementById('lu-plat').value;
+  if (!username) return;
+
+  lookupBusy = true;
+  const btn = document.getElementById('lu-btn');
+  btn.disabled = true;
+  const res = document.getElementById('lu-result');
+
+  res.innerHTML = `
+    <div class="result-loading">
+      <div class="sh" style="height:13px;width:130px;margin:0 auto 7px"></div>
+      <div class="sh" style="height:11px;width:80px;margin:0 auto 14px"></div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+        <div class="sh" style="height:52px;border-radius:6px"></div>
+        <div class="sh" style="height:52px;border-radius:6px"></div>
+        <div class="sh" style="height:52px;border-radius:6px"></div>
+      </div>
+    </div>`;
+
+  const profile = await lookupPlayerCached(username, platform);
+  lookupBusy = false;
+  btn.disabled = false;
+
+  if (!profile || profile.error) {
+    res.innerHTML = `<div class="result-err">❌ ${profile?.error || 'Player not found'}</div>`;
+    return;
+  }
+  if (profile._fromCache) {
+    // Show a subtle cached badge in the result
+    const badge = document.createElement('div');
+    badge.style.cssText = 'font-size:10px;color:rgba(167,139,250,.5);text-align:right;padding:2px 4px 0;letter-spacing:.5px';
+    badge.textContent = '⚡ Cached result';
+    res.appendChild(badge);
+  }
+
+  const p = profile;
+  const hidden = p.statsPrivate && !p.resolvedViaProfileId;
+
+  res.innerHTML = '';
+  const card = document.createElement('div');
+  card.className = 'result-card fi';
+
+  const rankColor = rc(p.rank);
+
+  card.innerHTML = `
+    <div class="result-name">${p._displayName || p.username}</div>
+    <div class="result-rank" style="color:${rankColor}">${p.rank || 'Unranked'}${p.mmr ? ` — ${p.mmr} RP` : ''}</div>
+    ${hidden
+      ? `<div style="font-size:12px;color:rgba(255,255,255,.35);font-style:italic;margin-bottom:10px">🔒 Stats are private</div>`
+      : `<div class="result-grid">
+           <div class="stat-box">
+             <div class="stat-box-v" style="color:${sc(p.kd)}">${p.kd ?? '—'}</div>
+             <div class="stat-box-l">K/D</div>
+           </div>
+           <div class="stat-box">
+             <div class="stat-box-v" style="color:${sc(p.winRate, 50)}">${p.winRate != null ? p.winRate + '%' : '—'}</div>
+             <div class="stat-box-l">Win Rate</div>
+           </div>
+           <div class="stat-box">
+             <div class="stat-box-v" style="color:rgba(255,255,255,.55)">${p.level ?? '—'}</div>
+             <div class="stat-box-l">Level</div>
+           </div>
+         </div>
+         <div class="result-badges">
+           ${p.detection?.verdict !== 'clean' && p.detection?.label
+             ? `<span class="result-badge" style="color:${p.detection.color};background:${p.detection.color}18;border:1px solid ${p.detection.color}44">${emo(p.detection.verdict)} ${p.detection.label}</span>`
+             : ''}
+           ${p.reputation?.flagged
+             ? `<span class="result-badge" style="color:#ef4444;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3)">🚩 ${p.reputation.reports} rep flags</span>`
+             : ''}
+           ${!p.detection?.verdict || p.detection.verdict === 'clean'
+             ? `<span class="result-badge" style="color:#22c55e;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.22)">✓ Clean</span>`
+             : ''}
+         </div>`
+    }
+    ${p.seasonHistory?.length
+      ? `<div style="margin-top:4px">
+           <div style="font-size:9px;color:rgba(255,255,255,.28);letter-spacing:1px;text-transform:uppercase;margin-bottom:5px">Season History</div>
+           <div class="season-mini">
+             ${p.seasonHistory.slice(0, 6).map(s =>
+               `<span class="season-pill" style="color:${rc(s.rank)};border-color:${rc(s.rank)}44;background:${rc(s.rank)}10">${s.season} ${s.rank?.split(' ')[0] || '—'}</span>`
+             ).join('')}
+           </div>
+         </div>`
+      : ''}
+  `;
+  res.appendChild(card);
+}
+
+// ════════════════════════════════════════════════════
+// CLICK-THROUGH + INPUT ISOLATION
+// ════════════════════════════════════════════════════
+
+// Hover-aware input isolation:
+// The overlay window is always in click-through mode (forwarding mouse to game).
+// When the user's cursor enters any interactive element (button, input, select),
+// we disable click-through so clicks register in the overlay.
+// When cursor leaves, we re-enable click-through so the game gets input again.
+// This means typing in a search box or clicking a button NEVER leaks into R6.
+
+let hoverCount = 0;
+let manualLock = false; // true = fully locked interactive (manual toggle)
+
+function setInteractive(isOver) {
+  if (manualLock) return; // manual lock overrides hover
+  if (isOver) {
+    hoverCount++;
+    if (hoverCount === 1) window.tracker?.setHoverInteractive(true);
+  } else {
+    hoverCount = Math.max(0, hoverCount - 1);
+    if (hoverCount === 0) window.tracker?.setHoverInteractive(false);
+  }
+}
+
+// Attach hover tracking to all interactive elements in the overlay
+function attachHoverTracking() {
+  const selector = 'button, input, select, textarea, [role="button"], .icon-btn, .login-btn, .tab-btn, .lookup-search-btn, .slot-inp, .lookup-inp, .fi-inp, .tfa-d, .card-go, .save-row';
+  document.querySelectorAll(selector).forEach(el => {
+    el.addEventListener('mouseenter', () => setInteractive(true),  { passive: true });
+    el.addEventListener('mouseleave', () => setInteractive(false), { passive: true });
+  });
+  // Also track the panel itself for drag region — NOT interactive per-se,
+  // but we need mouse events for dragging the overlay window
+  const panel = document.getElementById('panel');
+  if (panel) {
+    panel.addEventListener('mouseenter', () => setInteractive(true),  { passive: true });
+    panel.addEventListener('mouseleave', () => { hoverCount = 0; if (!manualLock) window.tracker?.setHoverInteractive(false); }, { passive: true });
+  }
+}
+
+// Re-attach after any roster re-render (new input elements may be created)
+const _origRenderRoster = window._renderRosterHook;
+function reattachAfterRender() {
+  setTimeout(attachHoverTracking, 50);
+}
+
+// Prevent keystrokes from bleeding to game:
+// When an input is focused, stop all keyboard events at the document level
+// from propagating beyond this window (Electron handles this via focusable:false,
+// but we also suppress here as a safety net)
+document.addEventListener('keydown', e => {
+  if (document.activeElement && (
+    document.activeElement.tagName === 'INPUT' ||
+    document.activeElement.tagName === 'TEXTAREA' ||
+    document.activeElement.tagName === 'SELECT'
+  )) {
+    e.stopPropagation();
+  }
+}, true);
+
+// Ensure inputs capture focus within the overlay when clicked
+document.addEventListener('click', e => {
+  if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) {
+    e.target.focus();
+    e.stopPropagation();
+  }
+}, true);
+
+// Manual lock toggle (🖱 button) — makes overlay fully interactive without hover required
+let clickThrough = false;
+function toggleClickThrough() {
+  clickThrough = !clickThrough;
+  manualLock = !clickThrough;
+  const btn = document.getElementById('lock-btn');
+  btn.classList.toggle('active', clickThrough);
+  btn.title = clickThrough ? 'Click-through ON (hover to interact)' : 'Click-through OFF (fully interactive)';
+  if (clickThrough) {
+    // Back to hover-only mode
+    hoverCount = 0;
+    window.tracker?.setHoverInteractive(false);
+  } else {
+    // Fully interactive — disable click-through entirely
+    window.tracker?.setClickThrough(false);
+  }
+}
+
+// Run hover tracking setup once DOM is ready
+document.addEventListener('DOMContentLoaded', attachHoverTracking);
+if (document.readyState !== 'loading') attachHoverTracking();
+
+// ════════════════════════════════════════════════════
+// PUSH EVENT HANDLERS (main → overlay)
+// ════════════════════════════════════════════════════
+if (window.tracker) {
+  initAuth();
+
+  window.tracker.onAuthState(state => {
+    if (!state.loggedIn) {
+      loggedIn = false;
+      matchLive = false;
+      document.getElementById('login-gate').classList.remove('hidden');
+      document.getElementById('tabs').classList.remove('show');
+      document.getElementById('user-pill').classList.remove('show');
+      document.getElementById('autofill-chip').classList.remove('show');
+      document.getElementById('inp-user').value = '';
+      showCredsPanel();
+      setLiveDot('idle');
+    }
+  });
+
+  window.tracker.onMatchState(state => {
+    matchLive = state.active;
+    if (state.active) {
+      setLiveDot('live');
+      document.getElementById('waiting-block').style.display = 'none';
+      document.getElementById('roster-block').style.display  = 'block';
+    } else {
+      setLiveDot(state.polling ? 'scanning' : 'idle');
+      document.getElementById('waiting-block').style.display = 'block';
+      document.getElementById('roster-block').style.display  = 'none';
+    }
+    if (state.roster) renderRoster(state.roster);
+    if (state.snapshot) setSnapLabel(state.snapshot);
+  });
+
+  window.tracker.onLogStatus(status => {
+    const dot   = document.getElementById('ms-dot');
+    const label = document.getElementById('ms-label');
+    if (!status.watching) {
+      if (dot)   dot.className   = 'ms-dot idle';
+      if (label) { label.className = 'ms-label idle'; label.textContent = status.reason || 'Log not found'; }
+      const wb = document.getElementById('waiting-block');
+      if (wb) wb.innerHTML = `
+        <div class="waiting-icon">⚠️</div>
+        <div class="waiting-title">Log file not found</div>
+        <div class="waiting-sub">${status.reason || 'Launch R6 Siege at least once.'}</div>`;
+    }
+  });
+
+  window.tracker.onRosterUpdate(renderRoster);
+  window.tracker.onRosterClear(() => {
+    renderRoster({ yourTeam: [], enemyTeam: [] });
+  });
+  window.tracker.onMatchEnd(() => {
+    matchLive = false;
+    setLiveDot('scanning');
+    renderRoster({ yourTeam: [], enemyTeam: [] });
+    document.getElementById('waiting-block').style.display = 'block';
+    document.getElementById('roster-block').style.display  = 'none';
+  });
+
+  // Hydrate state on load
+  window.tracker.getMatchState().then(state => {
+    if (!state) return;
+    if (state.active) {
+      matchLive = true;
+      setLiveDot('live');
+      if (state.roster) renderRoster(state.roster);
+    } else if (state.polling) {
+      setLiveDot('scanning');
+    }
+    if (state.snapshot) setSnapLabel(state.snapshot);
+  }).catch(() => {});
+
+} else {
+  // Browser dev fallback
+  try {
+    const ws = new WebSocket('ws://127.0.0.1:7373');
+    ws.onmessage = e => {
+      const m = JSON.parse(e.data);
+      if (m.type === 'roster-update') renderRoster(m.payload);
+      if (m.type === 'match-state')   {
+        matchLive = m.payload.active;
+        setLiveDot(m.payload.active ? 'live' : 'scanning');
+        if (m.payload.roster) renderRoster(m.payload.roster);
+      }
+    };
+  } catch (_) {}
+}
+</script>
+</body>
+</html>
